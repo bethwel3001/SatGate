@@ -27,6 +27,51 @@ The MVP should prove the full loop:
 5. Backend verifies the Lightning provider webhook.
 6. Verified message appears in the dashboard with a sats counter.
 
+## Current MVP
+
+This repository now includes a working local MVP scaffold:
+
+- `services/api`: Rust Axum API with SQLite-backed forms, messages, invoices, webhook events, and a demo payment endpoint
+- `apps/web`: Next.js dashboard, demo website, and embeddable iframe widget
+- `/`: owner dashboard
+- `/demo`: pitch-ready demo website
+- `/embed/demo-form`: iframe widget route seeded by the API
+
+The MVP supports WebLN attempts and QR display. Because real Alby or LNBits credentials are not configured yet, the widget also includes a demo payment action that marks the generated invoice paid through the backend.
+
+## Local Setup
+
+Install frontend dependencies:
+
+```bash
+pnpm install
+```
+
+Run the Rust API:
+
+```bash
+pnpm api:dev
+```
+
+In a second terminal, run the frontend:
+
+```bash
+pnpm dev
+```
+
+Open:
+
+- Dashboard: `http://localhost:3000`
+- Demo site: `http://localhost:3000/demo`
+- API health: `http://localhost:8080/health`
+
+Copy environment examples if needed:
+
+```bash
+cp services/api/.env.example services/api/.env
+cp apps/web/.env.example apps/web/.env.local
+```
+
 ## Tech Stack
 
 - Backend: Rust, Axum, Tokio, SQLx
@@ -35,6 +80,16 @@ The MVP should prove the full loop:
 - Database: SQLite for the hackathon MVP, with a clear PostgreSQL migration path
 - Lightning provider: Alby API or LNBits
 - Wallet integration: WebLN with QR fallback
+
+## Demo Payment Flow
+
+For hackathon reliability, the first MVP has a mock settlement endpoint:
+
+```text
+POST /api/invoices/:id/mock-pay
+```
+
+Real provider support should replace only the invoice creation and webhook verification internals. The frontend contract can stay the same.
 
 ## Design Direction
 

@@ -1,0 +1,12 @@
+{
+  "name": "satgate",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @satgate/web dev",
+    "build": "pnpm --filter @satgate/web build",
+    "lint": "pnpm --filter @satgate/web lint",
+    "api:dev": "cargo run --manifest-path services/api/Cargo.toml",
+    "api:check": "cargo check --manifest-path services/api/Cargo.toml"
+  },
+  "packageManager": "pnpm@10.30.3"
+}
