@@ -30,6 +30,12 @@ export function createForm(payload: { name: string; domain: string; amount_sats:
   });
 }
 
+export function deleteForm(id: string) {
+  return request<void>(`/api/forms/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export function getMessages() {
   return request<SatGateMessage[]>("/api/messages", { cache: "no-store" });
 }

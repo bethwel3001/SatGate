@@ -9,6 +9,7 @@ export type SatGateForm = {
 export type SatGateMessage = {
   id: string;
   form_id: string;
+  form_name?: string;
   sender_name: string;
   sender_email: string;
   body: string;
