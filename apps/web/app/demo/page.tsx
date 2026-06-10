@@ -1,77 +1,50 @@
 import Link from "next/link";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 export default function DemoPage() {
   return (
-    <main className="min-h-screen bg-white text-satBlack">
-      <section className="border-b border-slate-200 bg-satBlack text-white">
-        <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_420px] lg:px-8">
-          <div className="flex flex-col justify-center">
-            <Link
-              className="inline-flex w-fit items-center gap-2 rounded-md border border-white/20 px-3 py-2 text-sm font-semibold text-white transition hover:border-white"
-              href="/"
-            >
-              <ArrowLeft size={16} aria-hidden="true" />
-              Back to dashboard
-            </Link>
-            <p className="mt-8 text-sm font-bold uppercase text-blue-200">Demo portfolio site</p>
-            <h1 className="brand-font mt-2 max-w-3xl text-4xl font-bold sm:text-5xl">
-              Sarah builds sharp websites for independent founders.
+    <main className="min-h-screen bg-[#f8fafc] text-satBlack selection:bg-blue-100">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-8">
+        <Link
+          className="group flex items-center gap-2 text-sm font-semibold text-slate-500 transition hover:text-satBlue"
+          href="/"
+        >
+          <ArrowLeft className="transition-transform group-hover:-translate-x-1" size={18} aria-hidden="true" />
+          Back to dashboard
+        </Link>
+      </nav>
+
+      <div className="mx-auto max-w-7xl px-6 pb-24 pt-12">
+        <div className="grid gap-16 lg:grid-cols-[1fr_500px]">
+          <header className="flex flex-col justify-center">
+            <h1 className="brand-font text-5xl font-bold leading-[1.1] tracking-tight text-satBlack sm:text-7xl">
+              Sarah builds <span className="text-satBlue">sharp</span> websites for founders.
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-200">
-              This page shows how SatGate fits into a normal website. The contact form below is embedded as an iframe and only delivers paid messages.
+            <p className="mt-8 max-w-xl text-lg leading-relaxed text-slate-600">
+              This demo shows how SatGate protects high-value contact forms. 
+              Only verified, paid submissions reach Sarah's inbox.
             </p>
-          </div>
+          </header>
 
-          <div className="rounded-lg border border-white/10 bg-white p-5 text-satBlack">
-            <p className="text-sm font-bold text-satBlue">Services</p>
-            <ul className="mt-3 space-y-3 text-sm leading-6 text-slate-700">
-              <li>Landing pages for new products</li>
-              <li>Responsive portfolio sites</li>
-              <li>Conversion-focused redesigns</li>
-            </ul>
-            <a
-              className="mt-5 inline-flex items-center gap-2 rounded-md bg-satBlue px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
-              href="#contact"
-            >
-              <ExternalLink size={16} aria-hidden="true" />
-              Contact Sarah
-            </a>
-          </div>
+          <aside className="relative">
+            <div className="absolute -inset-4 rounded-[2rem] bg-gradient-to-tr from-blue-50 to-indigo-50 opacity-50 blur-2xl" />
+            <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+              <div className="flex items-center gap-2 border-b border-slate-100 bg-slate-50/50 px-4 py-3">
+                <div className="flex gap-1.5">
+                  <div className="h-3 w-3 rounded-full bg-slate-200" />
+                  <div className="h-3 w-3 rounded-full bg-slate-200" />
+                  <div className="h-3 w-3 rounded-full bg-slate-200" />
+                </div>
+              </div>
+              <iframe
+                className="h-[640px] w-full"
+                src="/embed/demo-form"
+                title="SatGate contact form"
+              />
+            </div>
+          </aside>
         </div>
-      </section>
-
-      <section className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_560px] lg:px-8" id="contact">
-        <div>
-          <p className="text-sm font-bold uppercase text-satBlue">Protected contact</p>
-          <h2 className="brand-font mt-2 text-3xl font-bold">Spam-resistant by default</h2>
-          <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600">
-            A visitor pays a few sats before the message reaches Sarah. Real leads keep a simple path, while automated bulk spam gets a direct cost.
-          </p>
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <Fact label="Widget" value="iframe" />
-            <Fact label="Payment" value="WebLN or QR" />
-            <Fact label="Demo price" value="5 sats" />
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-lg border border-slate-200 shadow-panel">
-          <iframe
-            className="h-[620px] w-full"
-            src="/embed/demo-form"
-            title="SatGate contact form"
-          />
-        </div>
-      </section>
+      </div>
     </main>
-  );
-}
-
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
-      <p className="text-xs font-bold uppercase text-slate-500">{label}</p>
-      <p className="brand-font mt-1 text-lg font-bold text-satBlack">{value}</p>
-    </div>
   );
 }

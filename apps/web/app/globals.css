@@ -3,7 +3,6 @@
 @tailwind utilities;
 
 :root {
-  --font-brand: "Comfortaa", "Calibri", system-ui, sans-serif;
   --font-body: "Calibri", "Segoe UI", system-ui, sans-serif;
   --color-black: #0b0f14;
   --color-white: #ffffff;
