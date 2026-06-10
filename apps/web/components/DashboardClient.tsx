@@ -8,6 +8,15 @@ import type { SatGateForm, SatGateMessage } from "@/lib/types";
 import { PrimaryButton } from "./PrimaryButton";
 import { StatusBadge } from "./StatusBadge";
 
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-panel">
+      <p className="text-sm font-semibold text-slate-600">{label}</p>
+      <p className="brand-font mt-2 text-3xl font-bold text-satBlack">{value}</p>
+    </div>
+  );
+}
+
 export function DashboardClient() {
   const [forms, setForms] = useState<SatGateForm[]>([]);
   const [messages, setMessages] = useState<SatGateMessage[]>([]);
@@ -17,31 +26,52 @@ export function DashboardClient() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 
-  const selectedForm = forms[0];
-  const embedUrl =
-    typeof window === "undefined" || !selectedForm
-      ? ""
-      : `${window.location.origin}/embed/${selectedForm.id}`;
+  // Initial load
+  useEffect(() => {
+    async function init() {
+      setLoading(true);
+      try {
+        const [f, m] = await Promise.all([getForms(), getMessages()]);
+        setForms(f);
+        setMessages(m);
+        if (f.length > 0) setSelectedFormId(f[0].id);
+      } catch (e) {
+        console.error(e);
+        setError("Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    }
+    init();
+  }, []);
+
+  const selectedForm = forms.find((f) => f.id === (selectedFormId || forms[0]?.id));
+
+  const filteredMessages = useMemo(() => {
+    if (!selectedForm) return [];
+    return messages.filter((m) => m.form_id === selectedForm.id);
+  }, [messages, selectedForm]);
+
+  const totalSats = filteredMessages.reduce((sum, m) => sum + m.amount_sats, 0);
+
+  const embedUrl = typeof window !== "undefined" && selectedForm
+      ? `${window.location.origin}/embed/${selectedForm.id}`
+      : "";
+  
   const embedSnippet = selectedForm
     ? `<iframe src="${embedUrl}" title="SatGate contact form" width="100%" height="620" style="border:0"></iframe>`
     : "";
 
-  const totalSats = useMemo(
-    () => messages.reduce((total, message) => total + message.amount_sats, 0),
-    [messages],
-  );
-
   async function loadData() {
     setLoading(true);
-    setError("");
-
     try {
-      const [nextForms, nextMessages] = await Promise.all([getForms(), getMessages()]);
-      setForms(nextForms);
-      setMessages(nextMessages);
-    } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Could not load SatGate data");
+      const [f, m] = await Promise.all([getForms(), getMessages()]);
+      setForms(f);
+      setMessages(m);
+    } catch (e) {
+      setError("Refresh failed");
     } finally {
       setLoading(false);
     }
@@ -49,27 +79,21 @@ export function DashboardClient() {
 
   async function handleCreateForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
-
     try {
-      await createForm({ name, domain, amount_sats: amount });
-      await loadData();
-    } catch (createError) {
-      setError(createError instanceof Error ? createError.message : "Could not create form");
+      const newForm = await createForm({ name, domain, amount_sats: amount });
+      setForms(prev => [newForm, ...prev]);
+      setSelectedFormId(newForm.id);
+    } catch (e) {
+      setError("Form creation failed");
     }
   }
 
   async function copyEmbed() {
     if (!embedSnippet) return;
-
     await navigator.clipboard.writeText(embedSnippet);
     setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    setTimeout(() => setCopied(false), 2000);
   }
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
@@ -90,76 +114,101 @@ export function DashboardClient() {
             Demo site
           </Link>
           <PrimaryButton onClick={loadData} disabled={loading}>
-            <RefreshCw size={17} aria-hidden="true" />
+            <RefreshCw className={loading ? "animate-spin" : ""} size={17} aria-hidden="true" />
             Refresh
           </PrimaryButton>
         </div>
       </header>
 
-      {error ? (
+      {error && (
         <section className="rounded-md border border-red-200 bg-red-50 p-4 text-sm font-semibold text-satRed">
           {error}
         </section>
-      ) : null}
+      )}
 
       <section className="grid gap-4 md:grid-cols-3">
-        <Metric label="Verified messages" value={messages.length.toString()} />
+        <Metric label="Verified messages" value={filteredMessages.length.toString()} />
         <Metric label="Sats collected" value={totalSats.toString()} />
         <Metric label="Active forms" value={forms.length.toString()} />
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[380px_1fr]">
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-panel">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="brand-font text-xl font-bold text-satBlack">Form setup</h2>
-              <p className="mt-1 text-sm text-slate-600">Create an iframe-ready SatGate form.</p>
+        <div className="flex flex-col gap-5">
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-panel">
+            <h2 className="brand-font text-xl font-bold text-satBlack">Select Form</h2>
+            <div className="mt-4 flex flex-col gap-2">
+              {forms.length === 0 && !loading && (
+                <p className="text-sm text-slate-500 italic">No forms found.</p>
+              )}
+              {forms.map((form) => (
+                <button
+                  key={form.id}
+                  onClick={() => setSelectedFormId(form.id)}
+                  className={`flex flex-col rounded-md border p-3 text-left transition ${
+                    selectedForm?.id === form.id
+                      ? "border-satBlue bg-blue-50/50"
+                      : "border-slate-200 hover:border-blue-200"
+                  }`}
+                >
+                  <span className="text-sm font-bold text-satBlack">{form.name}</span>
+                  <span className="text-xs text-slate-500">{form.domain} - {form.amount_sats} sats</span>
+                </button>
+              ))}
             </div>
-            <ShieldCheck className="text-satBlue" size={24} aria-hidden="true" />
           </div>
 
-          <form className="mt-5 space-y-4" onSubmit={handleCreateForm}>
-            <label className="block text-sm font-semibold text-satBlack">
-              Form name
-              <input
-                className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </label>
-            <label className="block text-sm font-semibold text-satBlack">
-              Allowed domain
-              <input
-                className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
-                value={domain}
-                onChange={(event) => setDomain(event.target.value)}
-              />
-            </label>
-            <label className="block text-sm font-semibold text-satBlack">
-              Price in sats
-              <input
-                className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
-                min={1}
-                max={10000}
-                type="number"
-                value={amount}
-                onChange={(event) => setAmount(Number(event.target.value))}
-              />
-            </label>
-            <PrimaryButton className="w-full" type="submit">
-              Create form
-            </PrimaryButton>
-          </form>
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-panel">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="brand-font text-xl font-bold text-satBlack">New form</h2>
+                <p className="mt-1 text-sm text-slate-600">Create an iframe-ready SatGate form.</p>
+              </div>
+              <ShieldCheck className="text-satBlue" size={24} aria-hidden="true" />
+            </div>
 
-          <div className="mt-6 border-t border-slate-200 pt-5">
-            <h3 className="text-sm font-bold text-satBlack">Embed snippet</h3>
-            <pre className="mt-2 min-h-28 overflow-auto rounded-md bg-satBlack p-3 text-xs leading-5 text-white">
-              {embedSnippet || "Create a form to generate an iframe snippet."}
-            </pre>
-            <PrimaryButton className="mt-3 w-full" disabled={!embedSnippet} onClick={copyEmbed} tone="neutral">
-              <Copy size={17} aria-hidden="true" />
-              {copied ? "Copied" : "Copy snippet"}
-            </PrimaryButton>
+            <form className="mt-5 space-y-4" onSubmit={handleCreateForm}>
+              <label className="block text-sm font-semibold text-satBlack">
+                Form name
+                <input
+                  className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </label>
+              <label className="block text-sm font-semibold text-satBlack">
+                Allowed domain
+                <input
+                  className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
+                  value={domain}
+                  onChange={(event) => setDomain(event.target.value)}
+                />
+              </label>
+              <label className="block text-sm font-semibold text-satBlack">
+                Price in sats
+                <input
+                  className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
+                  min={1}
+                  max={10000}
+                  type="number"
+                  value={amount}
+                  onChange={(event) => setAmount(Number(event.target.value))}
+                />
+              </label>
+              <PrimaryButton className="w-full" type="submit">
+                Create form
+              </PrimaryButton>
+            </form>
+
+            <div className="mt-6 border-t border-slate-200 pt-5">
+              <h3 className="text-sm font-bold text-satBlack">Embed snippet</h3>
+              <pre className="mt-2 min-h-28 overflow-auto rounded-md bg-satBlack p-3 text-xs leading-5 text-white">
+                {embedSnippet || "Create a form to generate an iframe snippet."}
+              </pre>
+              <PrimaryButton className="mt-3 w-full" disabled={!embedSnippet} onClick={copyEmbed} tone="neutral">
+                <Copy size={17} aria-hidden="true" />
+                {copied ? "Copied" : "Copy snippet"}
+              </PrimaryButton>
+            </div>
           </div>
         </div>
 
@@ -175,7 +224,7 @@ export function DashboardClient() {
           </div>
 
           <div className="mt-4 space-y-3">
-            {messages.length === 0 ? (
+            {filteredMessages.length === 0 ? (
               <div className="flex min-h-72 flex-col items-center justify-center rounded-md border border-dashed border-slate-300 p-6 text-center">
                 <Inbox className="text-slate-400" size={36} aria-hidden="true" />
                 <h3 className="brand-font mt-3 text-lg font-bold text-satBlack">No verified messages yet</h3>
@@ -184,7 +233,7 @@ export function DashboardClient() {
                 </p>
               </div>
             ) : (
-              messages.map((message) => (
+              filteredMessages.map((message) => (
                 <article
                   className="rounded-md border border-slate-200 bg-white p-4 transition hover:border-blue-200 hover:bg-blue-50/40"
                   key={message.id}
@@ -209,14 +258,5 @@ export function DashboardClient() {
         </div>
       </section>
     </main>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-panel">
-      <p className="text-sm font-semibold text-slate-600">{label}</p>
-      <p className="brand-font mt-2 text-3xl font-bold text-satBlack">{value}</p>
-    </div>
   );
 }

@@ -33,7 +33,8 @@ This repository now includes a working local MVP scaffold:
 
 - `services/api`: Rust Axum API with SQLite-backed forms, messages, invoices, webhook events, and a demo payment endpoint
 - `apps/web`: Next.js dashboard, demo website, and embeddable iframe widget
-- `/`: owner dashboard
+- `/`: marketing landing page
+- `/dashboard`: owner dashboard
 - `/demo`: pitch-ready demo website
 - `/embed/demo-form`: iframe widget route seeded by the API
 
@@ -61,7 +62,8 @@ pnpm dev
 
 Open:
 
-- Dashboard: `http://localhost:3000`
+- Landing page: `http://localhost:3000`
+- Dashboard: `http://localhost:3000/dashboard`
 - Demo site: `http://localhost:3000/demo`
 - API health: `http://localhost:8080/health`
 
