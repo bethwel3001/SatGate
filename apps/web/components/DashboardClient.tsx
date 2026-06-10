@@ -2,8 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Copy, ExternalLink, Inbox, RefreshCw, ShieldCheck } from "lucide-react";
-import { API_URL, createForm, getForms, getMessages } from "@/lib/api";
+import { Copy, ExternalLink, Inbox, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import { createForm, deleteForm, getForms, getMessages } from "@/lib/api";
 import type { SatGateForm, SatGateMessage } from "@/lib/types";
 import { PrimaryButton } from "./PrimaryButton";
 import { StatusBadge } from "./StatusBadge";
@@ -17,8 +17,9 @@ export function DashboardClient() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 
-  const selectedForm = forms[0];
+  const selectedForm = forms.find(f => f.id === selectedFormId) || forms[0];
   const embedUrl =
     typeof window === "undefined" || !selectedForm
       ? ""
@@ -59,10 +60,24 @@ export function DashboardClient() {
     }
   }
 
-  async function copyEmbed() {
-    if (!embedSnippet) return;
+  async function handleDeleteForm(id: string) {
+    if (!confirm("Are you sure you want to delete this form? All associated messages will also be removed.")) {
+      return;
+    }
 
-    await navigator.clipboard.writeText(embedSnippet);
+    try {
+      await deleteForm(id);
+      await loadData();
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Could not delete form");
+    }
+  }
+
+  async function copyEmbed(snippet?: string) {
+    const textToCopy = snippet || embedSnippet;
+    if (!textToCopy) return;
+
+    await navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
   }
@@ -75,8 +90,9 @@ export function DashboardClient() {
     <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
       <header className="flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase text-satBlue">Economic proof of intent</p>
-          <h1 className="brand-font mt-2 text-3xl font-bold text-satBlack sm:text-4xl">SatGate</h1>
+          <h1 className="brand-font mt-2 text-4xl font-bold text-satBlack sm:text-5xl">
+            SatGate
+          </h1>
           <p className="mt-2 max-w-2xl text-base text-slate-600">
             Lightning-powered contact forms that make abuse costly and keep verified messages easy to read.
           </p>
@@ -109,57 +125,103 @@ export function DashboardClient() {
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[380px_1fr]">
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-panel">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="brand-font text-xl font-bold text-satBlack">Form setup</h2>
-              <p className="mt-1 text-sm text-slate-600">Create an iframe-ready SatGate form.</p>
+        <div className="flex flex-col gap-5">
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-panel">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="brand-font text-xl font-bold text-satBlack">Form setup</h2>
+                <p className="mt-1 text-sm text-slate-600">Create an iframe-ready SatGate form.</p>
+              </div>
+              <ShieldCheck className="text-satBlue" size={24} aria-hidden="true" />
             </div>
-            <ShieldCheck className="text-satBlue" size={24} aria-hidden="true" />
+
+            <form className="mt-5 space-y-4" onSubmit={handleCreateForm}>
+              <label className="block text-sm font-semibold text-satBlack">
+                Form name
+                <input
+                  className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </label>
+              <label className="block text-sm font-semibold text-satBlack">
+                Allowed domain
+                <input
+                  className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
+                  value={domain}
+                  onChange={(event) => setDomain(event.target.value)}
+                />
+              </label>
+              <label className="block text-sm font-semibold text-satBlack">
+                Price in sats
+                <input
+                  className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
+                  min={1}
+                  max={10000}
+                  type="number"
+                  value={amount}
+                  onChange={(event) => setAmount(Number(event.target.value))}
+                />
+              </label>
+              <PrimaryButton className="w-full" type="submit">
+                Create form
+              </PrimaryButton>
+            </form>
           </div>
 
-          <form className="mt-5 space-y-4" onSubmit={handleCreateForm}>
-            <label className="block text-sm font-semibold text-satBlack">
-              Form name
-              <input
-                className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </label>
-            <label className="block text-sm font-semibold text-satBlack">
-              Allowed domain
-              <input
-                className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
-                value={domain}
-                onChange={(event) => setDomain(event.target.value)}
-              />
-            </label>
-            <label className="block text-sm font-semibold text-satBlack">
-              Price in sats
-              <input
-                className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
-                min={1}
-                max={10000}
-                type="number"
-                value={amount}
-                onChange={(event) => setAmount(Number(event.target.value))}
-              />
-            </label>
-            <PrimaryButton className="w-full" type="submit">
-              Create form
-            </PrimaryButton>
-          </form>
+          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-panel">
+            <h2 className="brand-font text-xl font-bold text-satBlack">Your forms</h2>
+            <div className="mt-4 space-y-2">
+              {forms.length === 0 ? (
+                <p className="text-sm text-slate-500 italic">No forms created yet.</p>
+              ) : (
+                forms.map((f) => {
+                  const isSelected = selectedForm?.id === f.id;
+                  const fEmbedUrl = typeof window === "undefined" ? "" : `${window.location.origin}/embed/${f.id}`;
+                  const fEmbedSnippet = `<iframe src="${fEmbedUrl}" title="SatGate contact form" width="100%" height="620" style="border:0"></iframe>`;
 
-          <div className="mt-6 border-t border-slate-200 pt-5">
-            <h3 className="text-sm font-bold text-satBlack">Embed snippet</h3>
-            <pre className="mt-2 min-h-28 overflow-auto rounded-md bg-satBlack p-3 text-xs leading-5 text-white">
-              {embedSnippet || "Create a form to generate an iframe snippet."}
-            </pre>
-            <PrimaryButton className="mt-3 w-full" disabled={!embedSnippet} onClick={copyEmbed} tone="neutral">
-              <Copy size={17} aria-hidden="true" />
-              {copied ? "Copied" : "Copy snippet"}
-            </PrimaryButton>
+                  return (
+                    <div
+                      key={f.id}
+                      onClick={() => setSelectedFormId(f.id)}
+                      className={`group flex items-center justify-between cursor-pointer rounded-md border p-3 transition ${
+                        isSelected
+                          ? "border-satBlue bg-blue-50/50 shadow-sm"
+                          : "border-slate-100 bg-slate-50/50 hover:border-slate-200 hover:bg-slate-100/50"
+                      }`}
+                    >
+                      <div className="overflow-hidden">
+                        <p className={`truncate text-sm font-bold ${isSelected ? "text-satBlue" : "text-satBlack"}`}>{f.name}</p>
+                        <p className="truncate text-xs text-slate-500">{f.domain}</p>
+                        <span className="mt-1 block text-xs font-bold text-slate-400">{f.amount_sats} sats</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            copyEmbed(fEmbedSnippet);
+                          }}
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-blue-100 hover:text-satBlue lg:opacity-0 lg:group-hover:opacity-100"
+                          title="Copy embed code"
+                        >
+                          <Copy size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteForm(f.id);
+                          }}
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-satRed lg:opacity-0 lg:group-hover:opacity-100"
+                          title="Delete form"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
 
@@ -169,9 +231,6 @@ export function DashboardClient() {
               <h2 className="brand-font text-xl font-bold text-satBlack">Verified inbox</h2>
               <p className="mt-1 text-sm text-slate-600">Only paid contact submissions appear here.</p>
             </div>
-            <p className="rounded-md bg-blue-50 px-3 py-2 text-xs font-semibold text-satBlue">
-              API: {API_URL}
-            </p>
           </div>
 
           <div className="mt-4 space-y-3">
@@ -191,7 +250,14 @@ export function DashboardClient() {
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <h3 className="text-base font-bold text-satBlack">{message.sender_name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-bold text-satBlack">{message.sender_name}</h3>
+                        {message.form_name && (
+                          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            {message.form_name}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-slate-600">{message.sender_email}</p>
                     </div>
                     <div className="flex items-center gap-2">
