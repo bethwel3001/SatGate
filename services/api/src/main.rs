@@ -328,6 +328,8 @@ async fn create_invoice(
     let expires_at = created_at + Duration::minutes(10);
     let payment_request = build_demo_invoice(&invoice_id, form.amount_sats);
 
+    let mut tx = state.db.begin().await?;
+
     sqlx::query(
         "insert into messages \
          (id, form_id, sender_name, sender_email, body, status, created_at, paid_at) \
@@ -339,7 +341,7 @@ async fn create_invoice(
     .bind(payload.sender_email.trim())
     .bind(payload.body.trim())
     .bind(created_at)
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await?;
 
     sqlx::query(
@@ -354,8 +356,10 @@ async fn create_invoice(
     .bind(&payment_hash)
     .bind(created_at)
     .bind(expires_at)
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await?;
+
+    tx.commit().await?;
 
     Ok(Json(InvoiceResponse {
         invoice_id,
@@ -471,7 +475,9 @@ async fn mark_invoice_paid(
     invoice_id: &str,
     preimage: Option<&str>,
 ) -> Result<(), ApiError> {
+    let mut tx = db.begin().await?;
     let paid_at = Utc::now();
+
     let result = sqlx::query(
         "update invoices set status = 'paid', paid_at = ?1, preimage = coalesce(?2, preimage) \
          where id = ?3 and status != 'paid'",
@@ -479,12 +485,12 @@ async fn mark_invoice_paid(
     .bind(paid_at)
     .bind(preimage)
     .bind(invoice_id)
-    .execute(db)
+    .execute(&mut *tx)
     .await?;
 
     let message_id: Option<String> = sqlx::query("select message_id from invoices where id = ?1")
         .bind(invoice_id)
-        .fetch_optional(db)
+        .fetch_optional(&mut *tx)
         .await?
         .map(|row| row.get("message_id"));
 
@@ -494,9 +500,11 @@ async fn mark_invoice_paid(
         sqlx::query("update messages set status = 'paid', paid_at = ?1 where id = ?2")
             .bind(paid_at)
             .bind(message_id)
-            .execute(db)
+            .execute(&mut *tx)
             .await?;
     }
+
+    tx.commit().await?;
 
     Ok(())
 }
