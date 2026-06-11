@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Comfortaa } from "next/font/google";
 import "./globals.css";
+import TopLoader from "@/components/TopLoader";
 
 const comfortaa = Comfortaa({
   subsets: ["latin"],
@@ -19,7 +20,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={comfortaa.variable}>
-      <body>{children}</body>
+      <body>
+         <TopLoader />
+  {children}
+      </body>
     </html>
   );
 }

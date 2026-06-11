@@ -8,6 +8,137 @@ import type { SatGateForm, SatGateMessage } from "@/lib/types";
 import { PrimaryButton } from "./PrimaryButton";
 import { StatusBadge } from "./StatusBadge";
 
+function BitcoinPulseLoader() {
+  return (
+    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6">
+        <div className="relative flex items-center justify-center">
+          <div style={{
+            position: "absolute",
+            width: "90px",
+            height: "90px",
+            borderRadius: "50%",
+            background: "rgba(29,78,216,0.15)",
+            animation: "ping 1.4s ease-out infinite",
+          }} />
+          <div style={{
+            position: "absolute",
+            width: "70px",
+            height: "70px",
+            borderRadius: "50%",
+            background: "rgba(29,78,216,0.2)",
+            animation: "ping 1.4s ease-out infinite 0.3s",
+          }} />
+          <div style={{
+            width: "56px",
+            height: "56px",
+            borderRadius: "50%",
+            background: "linear-gradient(135deg, #1d4ed8, #3b82f6)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            boxShadow: "0 0 24px rgba(29,78,216,0.5)",
+            animation: "glow 1.4s ease-in-out infinite alternate",
+            zIndex: 1,
+          }}>
+            <span style={{
+              color: "white",
+              fontSize: "26px",
+              fontWeight: "bold",
+              fontFamily: "var(--font-brand)",
+              lineHeight: 1,
+              marginTop: "-2px",
+            }}>₿</span>
+          </div>
+        </div>
+        <div className="flex flex-col items-center gap-1">
+          <p className="brand-font text-lg font-bold text-satBlack">SatGate</p>
+          <p className="text-sm text-slate-500">Loading your dashboard...</p>
+        </div>
+        <style>{`
+          @keyframes ping {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            100% { transform: scale(2); opacity: 0; }
+          }
+          @keyframes glow {
+            from { box-shadow: 0 0 12px rgba(29,78,216,0.4); }
+            to { box-shadow: 0 0 28px rgba(29,78,216,0.9), 0 0 48px rgba(59,130,246,0.3); }
+          }
+          @keyframes shimmer {
+            0% { background-position: -600px 0; }
+            100% { background-position: 600px 0; }
+          }
+          @keyframes progress {
+            0% { width: 0%; }
+            20% { width: 25%; }
+            50% { width: 60%; }
+            80% { width: 85%; }
+            95% { width: 95%; }
+          }
+        `}</style>
+      </div>
+    </main>
+  );
+}
+
+function SkeletonCard() {
+  const shimmer = {
+    background: "linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)",
+    backgroundSize: "600px 100%",
+    animation: "shimmer 1.4s infinite linear",
+  };
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-panel">
+      <div style={{ ...shimmer, height: "14px", width: "60%", borderRadius: "6px", marginBottom: "12px" }} />
+      <div style={{ ...shimmer, height: "32px", width: "40%", borderRadius: "6px" }} />
+    </div>
+  );
+}
+
+function SkeletonMessage() {
+  const shimmer = {
+    background: "linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)",
+    backgroundSize: "600px 100%",
+    animation: "shimmer 1.4s infinite linear",
+  };
+  return (
+    <div className="rounded-md border border-slate-200 bg-white p-4">
+      <div className="flex items-start justify-between">
+        <div style={{ flex: 1 }}>
+          <div style={{ ...shimmer, height: "16px", width: "35%", borderRadius: "6px", marginBottom: "8px" }} />
+          <div style={{ ...shimmer, height: "13px", width: "50%", borderRadius: "6px" }} />
+        </div>
+        <div style={{ ...shimmer, height: "24px", width: "70px", borderRadius: "20px" }} />
+      </div>
+      <div style={{ ...shimmer, height: "13px", width: "100%", borderRadius: "6px", marginTop: "16px" }} />
+      <div style={{ ...shimmer, height: "13px", width: "80%", borderRadius: "6px", marginTop: "8px" }} />
+    </div>
+  );
+}
+
+function FormProgressBar({ active }: { active: boolean }) {
+  if (!active) return null;
+  return (
+    <div style={{
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      height: "3px",
+      background: "#e2e8f0",
+      borderRadius: "3px 3px 0 0",
+      overflow: "hidden",
+    }}>
+      <div style={{
+        height: "100%",
+        background: "linear-gradient(90deg, #1d4ed8, #3b82f6)",
+        animation: "progress 2.5s ease-out forwards",
+        boxShadow: "0 0 8px rgba(29,78,216,0.6)",
+      }} />
+    </div>
+  );
+}
+
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-panel">
@@ -26,9 +157,9 @@ export function DashboardClient() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 
-  // Initial load
   useEffect(() => {
     async function init() {
       setLoading(true);
@@ -57,9 +188,9 @@ export function DashboardClient() {
   const totalSats = filteredMessages.reduce((sum, m) => sum + m.amount_sats, 0);
 
   const embedUrl = typeof window !== "undefined" && selectedForm
-      ? `${window.location.origin}/embed/${selectedForm.id}`
-      : "";
-  
+    ? `${window.location.origin}/embed/${selectedForm.id}`
+    : "";
+
   const embedSnippet = selectedForm
     ? `<iframe src="${embedUrl}" title="SatGate contact form" width="100%" height="620" style="border:0"></iframe>`
     : "";
@@ -79,12 +210,15 @@ export function DashboardClient() {
 
   async function handleCreateForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitting(true);
     try {
       const newForm = await createForm({ name, domain, amount_sats: amount });
       setForms(prev => [newForm, ...prev]);
       setSelectedFormId(newForm.id);
     } catch {
       setError("Form creation failed");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -104,6 +238,10 @@ export function DashboardClient() {
     await navigator.clipboard.writeText(embedSnippet);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  if (loading && forms.length === 0) {
+    return <BitcoinPulseLoader />;
   }
 
   return (
@@ -138,9 +276,19 @@ export function DashboardClient() {
       )}
 
       <section className="grid gap-4 md:grid-cols-3">
-        <Metric label="Verified messages" value={filteredMessages.length.toString()} />
-        <Metric label="Sats collected" value={totalSats.toString()} />
-        <Metric label="Active forms" value={forms.length.toString()} />
+        {loading ? (
+          <>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </>
+        ) : (
+          <>
+            <Metric label="Verified messages" value={filteredMessages.length.toString()} />
+            <Metric label="Sats collected" value={totalSats.toString()} />
+            <Metric label="Active forms" value={forms.length.toString()} />
+          </>
+        )}
       </section>
 
       <section className="grid gap-5 lg:grid-cols-[380px_1fr]">
@@ -149,7 +297,7 @@ export function DashboardClient() {
             <h2 className="brand-font text-xl font-bold text-satBlack">Select Form</h2>
             <div className="mt-4 flex flex-col gap-2">
               {forms.length === 0 && !loading && (
-                <p className="text-sm text-slate-500 italic">No forms found.</p>
+                <p className="text-sm italic text-slate-500">No forms found.</p>
               )}
               {forms.map((form) => (
                 <div key={form.id} className="group relative">
@@ -165,10 +313,7 @@ export function DashboardClient() {
                     <span className="text-xs text-slate-500">{form.domain} - {form.amount_sats} sats</span>
                   </button>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteForm(form.id);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteForm(form.id); }}
                     className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-md text-slate-400 opacity-0 transition hover:bg-red-50 hover:text-satRed group-hover:opacity-100"
                     title="Delete form"
                   >
@@ -179,7 +324,8 @@ export function DashboardClient() {
             </div>
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-panel">
+          <div className="relative rounded-lg border border-slate-200 bg-white p-5 shadow-panel overflow-hidden">
+            <FormProgressBar active={submitting} />
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="brand-font text-xl font-bold text-satBlack">New form</h2>
@@ -194,7 +340,7 @@ export function DashboardClient() {
                 <input
                   className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
                   value={name}
-                  onChange={(event) => setName(event.target.value)}
+                  onChange={(e) => setName(e.target.value)}
                 />
               </label>
               <label className="block text-sm font-semibold text-satBlack">
@@ -202,7 +348,7 @@ export function DashboardClient() {
                 <input
                   className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
                   value={domain}
-                  onChange={(event) => setDomain(event.target.value)}
+                  onChange={(e) => setDomain(e.target.value)}
                 />
               </label>
               <label className="block text-sm font-semibold text-satBlack">
@@ -213,11 +359,11 @@ export function DashboardClient() {
                   max={10000}
                   type="number"
                   value={amount}
-                  onChange={(event) => setAmount(Number(event.target.value))}
+                  onChange={(e) => setAmount(Number(e.target.value))}
                 />
               </label>
-              <PrimaryButton className="w-full" type="submit">
-                Create form
+              <PrimaryButton className="w-full" type="submit" disabled={submitting}>
+                {submitting ? "Creating..." : "Create form"}
               </PrimaryButton>
             </form>
 
@@ -246,7 +392,13 @@ export function DashboardClient() {
           </div>
 
           <div className="mt-4 space-y-3">
-            {filteredMessages.length === 0 ? (
+            {loading ? (
+              <>
+                <SkeletonMessage />
+                <SkeletonMessage />
+                <SkeletonMessage />
+              </>
+            ) : filteredMessages.length === 0 ? (
               <div className="flex min-h-72 flex-col items-center justify-center rounded-md border border-dashed border-slate-300 p-6 text-center">
                 <Inbox className="text-slate-400" size={36} aria-hidden="true" />
                 <h3 className="brand-font mt-3 text-lg font-bold text-satBlack">No verified messages yet</h3>
