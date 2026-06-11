@@ -34,6 +34,8 @@ enum ApiError {
     NotFound,
     #[error("invalid request: {0}")]
     BadRequest(String),
+    #[error("validation error: {0}")]
+    Validation(String),
     #[error("signature verification failed")]
     InvalidSignature,
     #[error("database error: {0}")]
@@ -45,6 +47,7 @@ impl IntoResponse for ApiError {
         let status = match self {
             ApiError::NotFound => StatusCode::NOT_FOUND,
             ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            ApiError::Validation(_) => StatusCode::BAD_REQUEST,
             ApiError::InvalidSignature => StatusCode::UNAUTHORIZED,
             ApiError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
         };
@@ -217,15 +220,15 @@ async fn create_form(
     let domain = payload.domain.trim();
 
     if name.is_empty() {
-        return Err(ApiError::BadRequest("form name is required".to_string()));
+        return Err(ApiError::Validation("form name is required".to_string()));
     }
     if domain.is_empty() {
-        return Err(ApiError::BadRequest(
+        return Err(ApiError::Validation(
             "allowed domain is required".to_string(),
         ));
     }
     if payload.amount_sats < 1 || payload.amount_sats > 10_000 {
-        return Err(ApiError::BadRequest(
+        return Err(ApiError::Validation(
             "amount_sats must be between 1 and 10000".to_string(),
         ));
     }
@@ -511,18 +514,18 @@ async fn mark_invoice_paid(
 
 fn validate_message_payload(payload: &CreateInvoiceRequest) -> Result<(), ApiError> {
     if payload.form_id.trim().is_empty() {
-        return Err(ApiError::BadRequest("form_id is required".to_string()));
+        return Err(ApiError::Validation("form_id is required".to_string()));
     }
     if payload.sender_name.trim().is_empty() {
-        return Err(ApiError::BadRequest("sender_name is required".to_string()));
+        return Err(ApiError::Validation("sender_name is required".to_string()));
     }
     if !payload.sender_email.contains('@') {
-        return Err(ApiError::BadRequest(
+        return Err(ApiError::Validation(
             "a valid sender_email is required".to_string(),
         ));
     }
     if payload.body.trim().len() < 10 {
-        return Err(ApiError::BadRequest(
+        return Err(ApiError::Validation(
             "message body must be at least 10 characters".to_string(),
         ));
     }
