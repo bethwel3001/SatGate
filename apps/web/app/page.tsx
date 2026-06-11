@@ -17,9 +17,6 @@ export default function LandingPage() {
           </ul>
         </nav>
         <div className="flex items-center gap-4">
-          <Link href="/dashboard" className="text-sm font-semibold hover:text-satBlue transition">
-            Sign in
-          </Link>
           <Link href="/dashboard">
             <PrimaryButton>
               Get Started
