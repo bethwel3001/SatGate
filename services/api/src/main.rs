@@ -153,7 +153,7 @@ async fn main() -> anyhow::Result<()> {
         .connect_with(options)
         .await?;
 
-    migrate(&db).await?;
+    sqlx::migrate!().run(&db).await?;
     seed_default_form(&db).await?;
 
     let state = AppState { db, webhook_secret };
@@ -544,65 +544,6 @@ fn verify_signature(headers: &HeaderMap, body: &str, secret: &str) -> Result<(),
     } else {
         Err(ApiError::InvalidSignature)
     }
-}
-
-async fn migrate(db: &SqlitePool) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "create table if not exists forms (
-            id text primary key,
-            name text not null,
-            domain text not null,
-            amount_sats integer not null,
-            created_at text not null
-        )",
-    )
-    .execute(db)
-    .await?;
-
-    sqlx::query(
-        "create table if not exists messages (
-            id text primary key,
-            form_id text not null references forms(id),
-            sender_name text not null,
-            sender_email text not null,
-            body text not null,
-            status text not null,
-            created_at text not null,
-            paid_at text
-        )",
-    )
-    .execute(db)
-    .await?;
-
-    sqlx::query(
-        "create table if not exists invoices (
-            id text primary key,
-            message_id text not null references messages(id),
-            amount_sats integer not null,
-            payment_request text not null,
-            payment_hash text not null,
-            status text not null,
-            preimage text,
-            created_at text not null,
-            paid_at text,
-            expires_at text not null
-        )",
-    )
-    .execute(db)
-    .await?;
-
-    sqlx::query(
-        "create table if not exists webhook_events (
-            id text primary key,
-            invoice_id text not null,
-            payload text not null,
-            created_at text not null
-        )",
-    )
-    .execute(db)
-    .await?;
-
-    Ok(())
 }
 
 async fn seed_default_form(db: &SqlitePool) -> Result<(), sqlx::Error> {
