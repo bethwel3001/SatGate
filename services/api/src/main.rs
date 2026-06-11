@@ -4,7 +4,7 @@ use axum::{
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
-    routing::{get, post},
+    routing::{delete, get, post},
     Json, Router,
 };
 use chrono::{DateTime, Duration, Utc};
@@ -161,6 +161,7 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/health", get(health))
         .route("/api/forms", get(list_forms).post(create_form))
+        .route("/api/forms/{id}", delete(delete_form))
         .route("/api/messages", get(list_messages))
         .route("/api/invoices", post(create_invoice))
         .route("/api/invoices/{id}", get(get_invoice))
@@ -249,6 +250,38 @@ async fn create_form(
     .await?;
 
     Ok(Json(form))
+}
+
+async fn delete_form(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, ApiError> {
+    // Delete associated records first (manual cascade)
+    sqlx::query("delete from webhook_events where invoice_id in (select id from invoices where message_id in (select id from messages where form_id = ?1))")
+        .bind(&id)
+        .execute(&state.db)
+        .await?;
+
+    sqlx::query("delete from invoices where message_id in (select id from messages where form_id = ?1)")
+        .bind(&id)
+        .execute(&state.db)
+        .await?;
+
+    sqlx::query("delete from messages where form_id = ?1")
+        .bind(&id)
+        .execute(&state.db)
+        .await?;
+
+    let result = sqlx::query("delete from forms where id = ?1")
+        .bind(&id)
+        .execute(&state.db)
+        .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(ApiError::NotFound);
+    }
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn list_messages(State(state): State<AppState>) -> Result<Json<Vec<Message>>, ApiError> {

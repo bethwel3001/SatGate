@@ -2,8 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Copy, ExternalLink, Inbox, RefreshCw, ShieldCheck } from "lucide-react";
-import { API_URL, createForm, getForms, getMessages } from "@/lib/api";
+import { Copy, ExternalLink, Inbox, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
+import { API_URL, createForm, deleteForm, getForms, getMessages } from "@/lib/api";
 import type { SatGateForm, SatGateMessage } from "@/lib/types";
 import { PrimaryButton } from "./PrimaryButton";
 import { StatusBadge } from "./StatusBadge";
@@ -88,6 +88,17 @@ export function DashboardClient() {
     }
   }
 
+  async function handleDeleteForm(id: string) {
+    if (!confirm("Are you sure? All associated messages will be deleted.")) return;
+    try {
+      await deleteForm(id);
+      setForms(prev => prev.filter(f => f.id !== id));
+      if (selectedFormId === id) setSelectedFormId(forms.find(f => f.id !== id)?.id || null);
+    } catch (e) {
+      setError("Deletion failed");
+    }
+  }
+
   async function copyEmbed() {
     if (!embedSnippet) return;
     await navigator.clipboard.writeText(embedSnippet);
@@ -141,18 +152,29 @@ export function DashboardClient() {
                 <p className="text-sm text-slate-500 italic">No forms found.</p>
               )}
               {forms.map((form) => (
-                <button
-                  key={form.id}
-                  onClick={() => setSelectedFormId(form.id)}
-                  className={`flex flex-col rounded-md border p-3 text-left transition ${
-                    selectedForm?.id === form.id
-                      ? "border-satBlue bg-blue-50/50"
-                      : "border-slate-200 hover:border-blue-200"
-                  }`}
-                >
-                  <span className="text-sm font-bold text-satBlack">{form.name}</span>
-                  <span className="text-xs text-slate-500">{form.domain} - {form.amount_sats} sats</span>
-                </button>
+                <div key={form.id} className="group relative">
+                  <button
+                    onClick={() => setSelectedFormId(form.id)}
+                    className={`flex w-full flex-col rounded-md border p-3 text-left transition ${
+                      selectedForm?.id === form.id
+                        ? "border-satBlue bg-blue-50/50"
+                        : "border-slate-200 hover:border-blue-200"
+                    }`}
+                  >
+                    <span className="text-sm font-bold text-satBlack">{form.name}</span>
+                    <span className="text-xs text-slate-500">{form.domain} - {form.amount_sats} sats</span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteForm(form.id);
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-md text-slate-400 opacity-0 transition hover:bg-red-50 hover:text-satRed group-hover:opacity-100"
+                    title="Delete form"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               ))}
             </div>
           </div>

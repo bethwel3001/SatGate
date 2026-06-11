@@ -117,12 +117,11 @@ export function WidgetForm({ formId }: WidgetFormProps) {
   return (
     <div className="min-h-screen bg-white text-satBlack">
       <div className="mx-auto w-full max-w-xl px-4 py-5">
-        <header className="border-b border-slate-200 pb-4">
-          <p className="text-xs font-bold uppercase text-satBlue">SatGate protected</p>
-          <h1 className="brand-font mt-1 text-2xl font-bold">Send a verified message</h1>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
-            Pay a tiny Lightning invoice before delivery. This keeps automated spam costly and visible.
-          </p>
+        <header className="flex items-center justify-between border-b border-slate-200 pb-3">
+          <span className="brand-font text-xl font-bold">SatGate</span>
+          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-satBlue">
+            Protected Form
+          </span>
         </header>
 
         {status === "paid" ? (
