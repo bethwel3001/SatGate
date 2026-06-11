@@ -34,6 +34,8 @@ enum ApiError {
     NotFound,
     #[error("invalid request: {0}")]
     BadRequest(String),
+    #[error("validation error: {0}")]
+    Validation(String),
     #[error("signature verification failed")]
     InvalidSignature,
     #[error("database error: {0}")]
@@ -45,6 +47,7 @@ impl IntoResponse for ApiError {
         let status = match self {
             ApiError::NotFound => StatusCode::NOT_FOUND,
             ApiError::BadRequest(_) => StatusCode::BAD_REQUEST,
+            ApiError::Validation(_) => StatusCode::BAD_REQUEST,
             ApiError::InvalidSignature => StatusCode::UNAUTHORIZED,
             ApiError::Database(_) => StatusCode::INTERNAL_SERVER_ERROR,
         };
@@ -153,7 +156,7 @@ async fn main() -> anyhow::Result<()> {
         .connect_with(options)
         .await?;
 
-    migrate(&db).await?;
+    sqlx::migrate!().run(&db).await?;
     seed_default_form(&db).await?;
 
     let state = AppState { db, webhook_secret };
@@ -217,15 +220,15 @@ async fn create_form(
     let domain = payload.domain.trim();
 
     if name.is_empty() {
-        return Err(ApiError::BadRequest("form name is required".to_string()));
+        return Err(ApiError::Validation("form name is required".to_string()));
     }
     if domain.is_empty() {
-        return Err(ApiError::BadRequest(
+        return Err(ApiError::Validation(
             "allowed domain is required".to_string(),
         ));
     }
     if payload.amount_sats < 1 || payload.amount_sats > 10_000 {
-        return Err(ApiError::BadRequest(
+        return Err(ApiError::Validation(
             "amount_sats must be between 1 and 10000".to_string(),
         ));
     }
@@ -328,18 +331,21 @@ async fn create_invoice(
     let expires_at = created_at + Duration::minutes(10);
     let payment_request = build_demo_invoice(&invoice_id, form.amount_sats);
 
+    let mut tx = state.db.begin().await?;
+
     sqlx::query(
         "insert into messages \
-         (id, form_id, sender_name, sender_email, body, status, created_at, paid_at) \
-         values (?1, ?2, ?3, ?4, ?5, 'pending', ?6, null)",
+         (id, form_id, sender_name, sender_email, body, status, payment_hash, created_at, paid_at) \
+         values (?1, ?2, ?3, ?4, ?5, 'pending', ?6, ?7, null)",
     )
     .bind(&message_id)
     .bind(&payload.form_id)
     .bind(payload.sender_name.trim())
     .bind(payload.sender_email.trim())
     .bind(payload.body.trim())
+    .bind(&payment_hash)
     .bind(created_at)
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await?;
 
     sqlx::query(
@@ -354,8 +360,10 @@ async fn create_invoice(
     .bind(&payment_hash)
     .bind(created_at)
     .bind(expires_at)
-    .execute(&state.db)
+    .execute(&mut *tx)
     .await?;
+
+    tx.commit().await?;
 
     Ok(Json(InvoiceResponse {
         invoice_id,
@@ -471,7 +479,9 @@ async fn mark_invoice_paid(
     invoice_id: &str,
     preimage: Option<&str>,
 ) -> Result<(), ApiError> {
+    let mut tx = db.begin().await?;
     let paid_at = Utc::now();
+
     let result = sqlx::query(
         "update invoices set status = 'paid', paid_at = ?1, preimage = coalesce(?2, preimage) \
          where id = ?3 and status != 'paid'",
@@ -479,12 +489,12 @@ async fn mark_invoice_paid(
     .bind(paid_at)
     .bind(preimage)
     .bind(invoice_id)
-    .execute(db)
+    .execute(&mut *tx)
     .await?;
 
     let message_id: Option<String> = sqlx::query("select message_id from invoices where id = ?1")
         .bind(invoice_id)
-        .fetch_optional(db)
+        .fetch_optional(&mut *tx)
         .await?
         .map(|row| row.get("message_id"));
 
@@ -494,27 +504,29 @@ async fn mark_invoice_paid(
         sqlx::query("update messages set status = 'paid', paid_at = ?1 where id = ?2")
             .bind(paid_at)
             .bind(message_id)
-            .execute(db)
+            .execute(&mut *tx)
             .await?;
     }
+
+    tx.commit().await?;
 
     Ok(())
 }
 
 fn validate_message_payload(payload: &CreateInvoiceRequest) -> Result<(), ApiError> {
     if payload.form_id.trim().is_empty() {
-        return Err(ApiError::BadRequest("form_id is required".to_string()));
+        return Err(ApiError::Validation("form_id is required".to_string()));
     }
     if payload.sender_name.trim().is_empty() {
-        return Err(ApiError::BadRequest("sender_name is required".to_string()));
+        return Err(ApiError::Validation("sender_name is required".to_string()));
     }
     if !payload.sender_email.contains('@') {
-        return Err(ApiError::BadRequest(
+        return Err(ApiError::Validation(
             "a valid sender_email is required".to_string(),
         ));
     }
     if payload.body.trim().len() < 10 {
-        return Err(ApiError::BadRequest(
+        return Err(ApiError::Validation(
             "message body must be at least 10 characters".to_string(),
         ));
     }
@@ -544,65 +556,6 @@ fn verify_signature(headers: &HeaderMap, body: &str, secret: &str) -> Result<(),
     } else {
         Err(ApiError::InvalidSignature)
     }
-}
-
-async fn migrate(db: &SqlitePool) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "create table if not exists forms (
-            id text primary key,
-            name text not null,
-            domain text not null,
-            amount_sats integer not null,
-            created_at text not null
-        )",
-    )
-    .execute(db)
-    .await?;
-
-    sqlx::query(
-        "create table if not exists messages (
-            id text primary key,
-            form_id text not null references forms(id),
-            sender_name text not null,
-            sender_email text not null,
-            body text not null,
-            status text not null,
-            created_at text not null,
-            paid_at text
-        )",
-    )
-    .execute(db)
-    .await?;
-
-    sqlx::query(
-        "create table if not exists invoices (
-            id text primary key,
-            message_id text not null references messages(id),
-            amount_sats integer not null,
-            payment_request text not null,
-            payment_hash text not null,
-            status text not null,
-            preimage text,
-            created_at text not null,
-            paid_at text,
-            expires_at text not null
-        )",
-    )
-    .execute(db)
-    .await?;
-
-    sqlx::query(
-        "create table if not exists webhook_events (
-            id text primary key,
-            invoice_id text not null,
-            payload text not null,
-            created_at text not null
-        )",
-    )
-    .execute(db)
-    .await?;
-
-    Ok(())
 }
 
 async fn seed_default_form(db: &SqlitePool) -> Result<(), sqlx::Error> {
