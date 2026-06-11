@@ -5,12 +5,11 @@ import "./globals.css";
 const comfortaa = Comfortaa({
   subsets: ["latin"],
   variable: "--font-brand",
-  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "SatGate",
-  description: "Economic proof of intent for contact forms.",
+  title: "SatGate | Economic proof of intent for contact forms",
+  description: "Lightning-powered contact forms that make abuse costly and keep verified messages easy to read.",
 };
 
 export default function RootLayout({
