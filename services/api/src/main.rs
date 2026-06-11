@@ -335,14 +335,15 @@ async fn create_invoice(
 
     sqlx::query(
         "insert into messages \
-         (id, form_id, sender_name, sender_email, body, status, created_at, paid_at) \
-         values (?1, ?2, ?3, ?4, ?5, 'pending', ?6, null)",
+         (id, form_id, sender_name, sender_email, body, status, payment_hash, created_at, paid_at) \
+         values (?1, ?2, ?3, ?4, ?5, 'pending', ?6, ?7, null)",
     )
     .bind(&message_id)
     .bind(&payload.form_id)
     .bind(payload.sender_name.trim())
     .bind(payload.sender_email.trim())
     .bind(payload.body.trim())
+    .bind(&payment_hash)
     .bind(created_at)
     .execute(&mut *tx)
     .await?;
