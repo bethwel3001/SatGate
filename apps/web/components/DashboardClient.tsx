@@ -70,7 +70,7 @@ export function DashboardClient() {
       const [f, m] = await Promise.all([getForms(), getMessages()]);
       setForms(f);
       setMessages(m);
-    } catch (e) {
+    } catch {
       setError("Refresh failed");
     } finally {
       setLoading(false);
@@ -83,7 +83,7 @@ export function DashboardClient() {
       const newForm = await createForm({ name, domain, amount_sats: amount });
       setForms(prev => [newForm, ...prev]);
       setSelectedFormId(newForm.id);
-    } catch (e) {
+    } catch {
       setError("Form creation failed");
     }
   }
@@ -94,7 +94,7 @@ export function DashboardClient() {
       await deleteForm(id);
       setForms(prev => prev.filter(f => f.id !== id));
       if (selectedFormId === id) setSelectedFormId(forms.find(f => f.id !== id)?.id || null);
-    } catch (e) {
+    } catch {
       setError("Deletion failed");
     }
   }

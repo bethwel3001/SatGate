@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, Zap, Mail, BarChart3 } from "lucide-react";
+import { ArrowRight, ShieldCheck, Zap, Mail } from "lucide-react";
 import { PrimaryButton } from "@/components/PrimaryButton";
 
 export default function LandingPage() {
@@ -37,7 +37,7 @@ export default function LandingPage() {
               Stop spam with <span className="text-satBlue">Sats</span>.
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-              SatGate adds a tiny cost to your contact form. Real leads won't mind paying 5 sats, but automated spammers will find it prohibitively expensive.
+              SatGate adds a tiny cost to your contact form. Real leads won&apos;t mind paying 5 sats, but automated spammers will find it prohibitively expensive.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               <Link href="/dashboard">
