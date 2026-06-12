@@ -34,7 +34,7 @@ pnpm api:dev
 pnpm dev
 ```
 
-### Target Environments
+### Target Environments (local development)
 * **Marketing Landing Page**: http://localhost:3000
 * **Management Dashboard**: http://localhost:3000/dashboard
 * **Live Product Demo**: http://localhost:3000/demo
@@ -47,3 +47,7 @@ Initialize localized environment files before custom production deployments:
 cp services/api/.env.example services/api/.env
 cp apps/web/.env.example apps/web/.env.local
 ```
+
+## Documentation & Pitch
+
+[Slides] (https://gamma.app/docs/Economic-Proof-of-Intent-ct4jquu9tcl5i7t?following_id=232koxzr9eka48t&follow_on_start=true)
