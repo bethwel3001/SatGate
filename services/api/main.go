@@ -21,8 +21,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-
-
 var staticFiles embed.FS
 
 
@@ -54,6 +52,12 @@ type Message struct {
 
 
 type CreateFormRequest struct {
+	Name       string `json:"name"`
+	Domain     string `json:"domain"`
+	AmountSats int64  `json:"amount_sats"`
+}
+
+type UpdateFormRequest struct {
 	Name       string `json:"name"`
 	Domain     string `json:"domain"`
 	AmountSats int64  `json:"amount_sats"`
@@ -120,6 +124,7 @@ func main() {
 
 	r.GET("/api/forms", state.listForms)
 	r.POST("/api/forms", state.createForm)
+	r.PUT("/api/forms/:id", state.updateForm)
 	r.DELETE("/api/forms/:id", state.deleteForm)
 
 	r.GET("/api/messages", state.listMessages)
@@ -149,7 +154,6 @@ func main() {
 	}
 }
 
-// ---- handlers ----
 
 func (s *AppState) listForms(c *gin.Context) {
 	rows, err := s.DB.Query(
@@ -208,6 +212,53 @@ func (s *AppState) createForm(c *gin.Context) {
 		"INSERT INTO forms (id, name, domain, amount_sats, created_at) VALUES (?, ?, ?, ?, ?)",
 		form.ID, form.Name, form.Domain, form.AmountSats, form.CreatedAt,
 	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, form)
+}
+
+func (s *AppState) updateForm(c *gin.Context) {
+	id := c.Param("id")
+
+	var req UpdateFormRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	req.Name = strings.TrimSpace(req.Name)
+	req.Domain = strings.TrimSpace(req.Domain)
+
+	if req.Name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "form name is required"})
+		return
+	}
+	if req.Domain == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "allowed domain is required"})
+		return
+	}
+	if req.AmountSats < 1 || req.AmountSats > 10_000 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "amount_sats must be between 1 and 10000"})
+		return
+	}
+
+	res, err := s.DB.Exec(
+		"UPDATE forms SET name = ?, domain = ?, amount_sats = ? WHERE id = ?",
+		req.Name, req.Domain, req.AmountSats, id,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+
+	form, err := s.findForm(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -413,7 +464,6 @@ func (s *AppState) lightningWebhook(c *gin.Context) {
 
 	n, _ := res.RowsAffected()
 	if n == 0 {
-		// duplicate event — just return current state
 		resp, err := s.fetchInvoiceStatus(payload.InvoiceID)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
@@ -550,7 +600,6 @@ func getenv(key, fallback string) string {
 	return fallback
 }
 
-// ---- migrations ----
 
 func runMigrations(db *sql.DB) error {
 	_, err := db.Exec(`
