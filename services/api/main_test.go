@@ -665,5 +665,10 @@ func TestGetInvoice_NotFound(t *testing.T) {
 	}
 }
 
+func TestMain(m *testing.M) {
+	os.MkdirAll("dist", 0755)
+	os.Exit(m.Run())
+}
+
 // Unused import guard — fmt is used in buildDemoInvoice
 var _ = fmt.Sprintf
