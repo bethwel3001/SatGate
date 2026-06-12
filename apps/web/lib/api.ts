@@ -30,10 +30,15 @@ export function createForm(payload: { name: string; domain: string; amount_sats:
   });
 }
 
-export function deleteForm(id: string) {
-  return request<void>(`/api/forms/${id}`, {
+export async function deleteForm(id: string): Promise<void> {
+  const response = await fetch(`${API_URL}/api/forms/${id}`, {
     method: "DELETE",
+    headers: { "Content-Type": "application/json" },
   });
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({ error: response.statusText }));
+    throw new Error(detail.error ?? "SatGate request failed");
+  }
 }
 
 export function getMessages() {
@@ -60,4 +65,18 @@ export function mockPayInvoice(invoiceId: string) {
   return request<InvoiceStatus>(`/api/invoices/${invoiceId}/mock-pay`, {
     method: "POST",
   });
+}
+
+
+export async function updateForm(
+  id: string,
+  data: { name: string; domain: string; amount_sats: number }
+): Promise<SatGateForm> {
+  const res = await fetch(`${API_URL}/api/forms/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
 }
