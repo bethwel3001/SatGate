@@ -4,7 +4,7 @@ use axum::{
     extract::{Path, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use chrono::{DateTime, Duration, Utc};
@@ -164,7 +164,7 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/health", get(health))
         .route("/api/forms", get(list_forms).post(create_form))
-        .route("/api/forms/{id}", delete(delete_form))
+        .route("/api/forms/{id}", delete(delete_form).put(update_form))
         .route("/api/messages", get(list_messages))
         .route("/api/invoices", post(create_invoice))
         .route("/api/invoices/{id}", get(get_invoice))
@@ -252,6 +252,46 @@ async fn create_form(
     .execute(&state.db)
     .await?;
 
+    Ok(Json(form))
+}
+
+async fn update_form(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(payload): Json<CreateFormRequest>,
+) -> Result<Json<Form>, ApiError> {
+    let name = payload.name.trim();
+    let domain = payload.domain.trim();
+
+    if name.is_empty() {
+        return Err(ApiError::Validation("form name is required".to_string()));
+    }
+    if domain.is_empty() {
+        return Err(ApiError::Validation(
+            "allowed domain is required".to_string(),
+        ));
+    }
+    if payload.amount_sats < 1 || payload.amount_sats > 10_000 {
+        return Err(ApiError::Validation(
+            "amount_sats must be between 1 and 10000".to_string(),
+        ));
+    }
+
+    let result = sqlx::query(
+        "update forms set name = ?1, domain = ?2, amount_sats = ?3 where id = ?4",
+    )
+    .bind(name)
+    .bind(domain)
+    .bind(payload.amount_sats)
+    .bind(&id)
+    .execute(&state.db)
+    .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(ApiError::NotFound);
+    }
+
+    let form = find_form(&state.db, &id).await?;
     Ok(Json(form))
 }
 

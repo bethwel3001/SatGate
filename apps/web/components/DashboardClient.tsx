@@ -2,8 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Copy, ExternalLink, Inbox, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
-import { API_URL, createForm, deleteForm, getForms, getMessages } from "@/lib/api";
+import { Check, Copy, ExternalLink, Inbox, Pencil, RefreshCw, ShieldCheck, Trash2, X } from "lucide-react";
+import { API_URL, createForm, deleteForm, getForms, getMessages, updateForm } from "@/lib/api";
 import type { SatGateForm, SatGateMessage } from "@/lib/types";
 import { PrimaryButton } from "./PrimaryButton";
 import { StatusBadge } from "./StatusBadge";
@@ -148,6 +148,13 @@ function Metric({ label, value }: { label: string; value: string }) {
   );
 }
 
+interface EditState {
+  id: string;
+  name: string;
+  domain: string;
+  amount_sats: number;
+}
+
 export function DashboardClient() {
   const [forms, setForms] = useState<SatGateForm[]>([]);
   const [messages, setMessages] = useState<SatGateMessage[]>([]);
@@ -159,6 +166,8 @@ export function DashboardClient() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
+  const [editState, setEditState] = useState<EditState | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -233,6 +242,33 @@ export function DashboardClient() {
     }
   }
 
+  function startEdit(form: SatGateForm) {
+    setEditState({ id: form.id, name: form.name, domain: form.domain, amount_sats: form.amount_sats });
+  }
+
+  function cancelEdit() {
+    setEditState(null);
+  }
+
+  async function handleSaveEdit() {
+    if (!editState) return;
+    setSaving(true);
+    setError("");
+    try {
+      const updated = await updateForm(editState.id, {
+        name: editState.name,
+        domain: editState.domain,
+        amount_sats: editState.amount_sats,
+      });
+      setForms(prev => prev.map(f => (f.id === updated.id ? updated : f)));
+      setEditState(null);
+    } catch {
+      setError("Update failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function copyEmbed() {
     if (!embedSnippet) return;
     await navigator.clipboard.writeText(embedSnippet);
@@ -299,28 +335,85 @@ export function DashboardClient() {
               {forms.length === 0 && !loading && (
                 <p className="text-sm italic text-slate-500">No forms found.</p>
               )}
-              {forms.map((form) => (
-                <div key={form.id} className="group relative">
-                  <button
-                    onClick={() => setSelectedFormId(form.id)}
-                    className={`flex w-full flex-col rounded-md border p-3 text-left transition ${
-                      selectedForm?.id === form.id
-                        ? "border-satBlue bg-blue-50/50"
-                        : "border-slate-200 hover:border-blue-200"
-                    }`}
+              {forms.map((form) =>
+                editState?.id === form.id ? (
+                  // ── inline edit row ──
+                  <div
+                    key={form.id}
+                    className="flex flex-col gap-2 rounded-md border border-satBlue bg-blue-50/40 p-3"
                   >
-                    <span className="text-sm font-bold text-satBlack">{form.name}</span>
-                    <span className="text-xs text-slate-500">{form.domain} - {form.amount_sats} sats</span>
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDeleteForm(form.id); }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-md text-slate-400 opacity-0 transition hover:bg-red-50 hover:text-satRed group-hover:opacity-100"
-                    title="Delete form"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ))}
+                    <input
+                      className="h-9 w-full rounded border border-slate-300 px-2 text-sm outline-none focus:border-satBlue focus:ring-2 focus:ring-blue-100"
+                      placeholder="Form name"
+                      value={editState.name}
+                      onChange={(e) => setEditState({ ...editState, name: e.target.value })}
+                    />
+                    <input
+                      className="h-9 w-full rounded border border-slate-300 px-2 text-sm outline-none focus:border-satBlue focus:ring-2 focus:ring-blue-100"
+                      placeholder="Allowed domain"
+                      value={editState.domain}
+                      onChange={(e) => setEditState({ ...editState, domain: e.target.value })}
+                    />
+                    <input
+                      className="h-9 w-full rounded border border-slate-300 px-2 text-sm outline-none focus:border-satBlue focus:ring-2 focus:ring-blue-100"
+                      type="number"
+                      min={1}
+                      max={10000}
+                      placeholder="Sats"
+                      value={editState.amount_sats}
+                      onChange={(e) => setEditState({ ...editState, amount_sats: Number(e.target.value) })}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveEdit}
+                        disabled={saving}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-md bg-satBlue px-3 py-1.5 text-xs font-bold text-white transition hover:opacity-90 disabled:opacity-50"
+                      >
+                        <Check size={13} />
+                        {saving ? "Saving…" : "Save"}
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:border-slate-400"
+                      >
+                        <X size={13} />
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  // ── normal form row ──
+                  <div key={form.id} className="group relative">
+                    <button
+                      onClick={() => setSelectedFormId(form.id)}
+                      className={`flex w-full flex-col rounded-md border p-3 text-left transition ${
+                        selectedForm?.id === form.id
+                          ? "border-satBlue bg-blue-50/50"
+                          : "border-slate-200 hover:border-blue-200"
+                      }`}
+                    >
+                      <span className="pr-16 text-sm font-bold text-satBlack">{form.name}</span>
+                      <span className="text-xs text-slate-500">{form.domain} · {form.amount_sats} sats</span>
+                    </button>
+                    <div className="absolute right-2 top-1/2 flex -translate-y-1/2 gap-1 opacity-0 transition group-hover:opacity-100">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); startEdit(form); }}
+                        className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition hover:bg-blue-50 hover:text-satBlue"
+                        title="Edit form"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteForm(form.id); }}
+                        className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition hover:bg-red-50 hover:text-satRed"
+                        title="Delete form"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              )}
             </div>
           </div>
 
