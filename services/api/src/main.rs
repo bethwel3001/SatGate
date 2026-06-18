@@ -73,8 +73,6 @@ struct Submission {
     status: String,
     paid_sats: i64,
     timestamp: String,
-    sender_name: Option<String>,
-    sender_email: Option<String>,
 }
 
 #[tokio::main]

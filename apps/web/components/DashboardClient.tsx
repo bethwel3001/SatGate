@@ -504,17 +504,17 @@ export function DashboardClient() {
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                      <h3 className="text-base font-bold text-satBlack">{message.sender_name}</h3>
-                      <p className="text-sm text-slate-600">{message.sender_email}</p>
+                      <h3 className="text-base font-bold text-satBlack">Verified Message</h3>
+                      <p className="text-sm text-slate-500">{new Date(message.timestamp).toLocaleString()}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       <StatusBadge status={message.status} />
                       <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-bold text-satGreen">
-                        +{message.amount_sats} sats
+                        +{message.paid_sats} sats
                       </span>
                     </div>
                   </div>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{message.body}</p>
+                  <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">{message.message}</p>
                 </article>
               ))
             )}
