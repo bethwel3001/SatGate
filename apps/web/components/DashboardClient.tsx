@@ -479,9 +479,6 @@ export function DashboardClient() {
               <h2 className="brand-font text-xl font-bold text-satBlack">Verified inbox</h2>
               <p className="mt-1 text-sm text-slate-600">Only paid contact submissions appear here.</p>
             </div>
-            <p className="rounded-md bg-blue-50 px-3 py-2 text-xs font-semibold text-satBlue">
-              API: {API_URL}
-            </p>
           </div>
 
           <div className="mt-4 space-y-3">

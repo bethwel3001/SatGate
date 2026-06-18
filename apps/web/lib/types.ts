@@ -1,36 +1,40 @@
-export type SatGateForm = {
+export type Site = {
   id: string;
+  owner_id: string;
   name: string;
-  domain: string;
-  amount_sats: number;
-  created_at: string;
+  sat_balance: number;
+  domain?: string;
+  amount_sats?: number;
 };
 
-export type SatGateMessage = {
+export type Submission = {
   id: string;
-  form_id: string;
-  form_name?: string;
+  site_id: string;
+  message: string;
+  status: "verified" | "pending" | "failed";
+  paid_sats: number;
+  timestamp: string;
+  sender_name?: string;
+  sender_email?: string;
+  body?: string;
+  amount_sats?: number;
+  form_id?: string;
+};
+
+export type SatGateForm = Site & {
+  domain: string;
+  amount_sats: number;
+};
+
+export type SatGateMessage = Submission & {
   sender_name: string;
   sender_email: string;
   body: string;
-  status: string;
   amount_sats: number;
-  created_at: string;
-  paid_at: string | null;
+  form_id: string;
 };
 
 export type InvoiceResponse = {
-  invoice_id: string;
-  message_id: string;
+  payment_hash: string;
   payment_request: string;
-  amount_sats: number;
-  status: string;
-  expires_at: string;
-};
-
-export type InvoiceStatus = {
-  invoice_id: string;
-  message_id: string;
-  status: string;
-  paid_at: string | null;
 };

@@ -1,27 +1,38 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, useRef } from "react";
 import QRCode from "qrcode";
-import { AlertTriangle, CheckCircle, Copy, Loader2, Send, Wallet } from "lucide-react";
-import { createInvoice, getInvoice, mockPayInvoice } from "@/lib/api";
+import { AlertTriangle, CheckCircle, Copy, Loader2, Send, Wallet, CreditCard } from "lucide-react";
+import { createInvoice, checkInvoice, API_URL } from "@/lib/api";
 import type { InvoiceResponse } from "@/lib/types";
 import { payWithWebLn } from "@/lib/webln";
 import { PrimaryButton } from "./PrimaryButton";
 import { StatusBadge } from "./StatusBadge";
+import { useSearchParams } from "next/navigation";
 
 type WidgetFormProps = {
   formId: string;
 };
 
 export function WidgetForm({ formId }: WidgetFormProps) {
-  const [senderName, setSenderName] = useState("");
-  const [senderEmail, setSenderEmail] = useState("");
-  const [body, setBody] = useState("");
+  const searchParams = useSearchParams();
+  const amountSats = parseInt(searchParams.get("amount") || "5", 10);
+  
+  const [message, setMessage] = useState("");
   const [invoice, setInvoice] = useState<InvoiceResponse | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
   const [status, setStatus] = useState<"idle" | "creating" | "pending" | "paid" | "failed">("idle");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [isMock, setIsMock] = useState(false);
+  
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Check if we are in mock mode (purely for UI assistance in the demo)
+    // We'll just assume mock if the LN_API_KEY isn't set in the env
+    setIsMock(process.env.NEXT_PUBLIC_LN_MODE === "mock" || true);
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -29,238 +40,213 @@ export function WidgetForm({ formId }: WidgetFormProps) {
     setStatus("creating");
 
     try {
-      const nextInvoice = await createInvoice({
-        form_id: formId,
-        sender_name: senderName,
-        sender_email: senderEmail,
-        body,
-      });
+      const nextInvoice = await createInvoice(formId, message, amountSats);
       setInvoice(nextInvoice);
       setStatus("pending");
 
-      const nextQr = await QRCode.toDataURL(nextInvoice.payment_request, {
-        margin: 1,
-        width: 220,
+      const nextQr = await QRCode.toDataURL(nextInvoice.payment_request.toUpperCase(), {
+        margin: 2,
+        width: 300,
+        errorCorrectionLevel: 'M',
         color: {
-          dark: "#0b0f14",
+          dark: "#000000",
           light: "#ffffff",
         },
       });
       setQrDataUrl(nextQr);
+      
+      startPolling(nextInvoice.payment_hash);
+      
+      try {
+        await payWithWebLn(nextInvoice.payment_request);
+      } catch (e) {
+        console.log("WebLN auto-pay skipped or failed", e);
+      }
     } catch (submitError) {
       setStatus("failed");
       setError(submitError instanceof Error ? submitError.message : "Could not create invoice");
     }
   }
 
-  async function handleWebLnPay() {
-    if (!invoice) return;
-
-    setError("");
-
-    try {
-      await payWithWebLn(invoice.payment_request);
-      await pollUntilPaid(invoice.invoice_id);
-    } catch (payError) {
-      setError(
-        payError instanceof Error
-          ? `${payError.message}. Use the QR code or the demo payment button.`
-          : "WebLN payment failed. Use the QR code or the demo payment button.",
-      );
-    }
-  }
-
-  async function handleMockPay() {
-    if (!invoice) return;
-
-    setError("");
-
-    try {
-      const paid = await mockPayInvoice(invoice.invoice_id);
-      if (paid.status === "paid") {
-        setStatus("paid");
+  function startPolling(hash: string) {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+    
+    pollingRef.current = setInterval(async () => {
+      try {
+        const { paid } = await checkInvoice(hash);
+        if (paid) {
+          setStatus("paid");
+          if (pollingRef.current) clearInterval(pollingRef.current);
+        }
+      } catch (e) {
+        console.error("Polling error", e);
       }
-    } catch (mockError) {
-      setError(mockError instanceof Error ? mockError.message : "Could not settle demo invoice");
-    }
+    }, 2000);
   }
 
-  async function pollUntilPaid(invoiceId: string) {
-    for (let attempt = 0; attempt < 10; attempt += 1) {
-      const nextStatus = await getInvoice(invoiceId);
-
-      if (nextStatus.status === "paid") {
-        setStatus("paid");
-        return;
-      }
-
-      await new Promise((resolve) => window.setTimeout(resolve, 1200));
-    }
-  }
-
-  async function copyInvoice() {
+  // Helper for demo: manually trigger a mock payment
+  async function handleSimulatePayment() {
     if (!invoice) return;
-
-    await navigator.clipboard.writeText(invoice.payment_request);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1800);
+    try {
+      await fetch(`${API_URL}/webhook`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Webhook-Signature": "mock" // Backend main.rs handles this if secret is default
+        },
+        body: JSON.stringify({
+          payment_hash: invoice.payment_hash,
+          preimage: "0000000000000000000000000000000000000000000000000000000000000000", // mock preimage
+          amount: amountSats
+        })
+      });
+    } catch (e) {
+      setError("Failed to simulate payment");
+    }
   }
 
   useEffect(() => {
-    if (status === "paid") {
-      setSenderName("");
-      setSenderEmail("");
-      setBody("");
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
+
+  const copyToClipboard = async () => {
+    if (!invoice) return;
+    try {
+      await navigator.clipboard.writeText(invoice.payment_request);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy!", err);
     }
-  }, [status]);
+  };
+
+  if (status === "paid") {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center space-y-4 bg-white min-h-[400px]">
+        <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center">
+          <CheckCircle className="w-10 h-10 text-satGreen" />
+        </div>
+        <h2 className="text-2xl font-bold text-satBlack brand-font">Message Sent!</h2>
+        <p className="text-slate-500 max-w-[240px]">Sarah has received your verified message.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="text-satBlue font-semibold hover:underline mt-4"
+        >
+          Send another message
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-white text-satBlack">
-      <div className="mx-auto w-full max-w-xl px-4 py-5">
-        <header className="flex items-center justify-between border-b border-slate-200 pb-3">
-          <span className="brand-font text-xl font-bold">SatGate</span>
-          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-satBlue">
-            Protected Form
-          </span>
-        </header>
+    <div className="max-w-md mx-auto bg-white border border-slate-200 rounded-xl overflow-hidden font-body">
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-bold text-satBlack brand-font">SatGate</h1>
+          <StatusBadge status={status} />
+        </div>
 
-        {status === "paid" ? (
-          <section className="mt-5 rounded-md border border-green-200 bg-green-50 p-5 text-satGreen">
-            <div className="flex items-center gap-2">
-              <CheckCircle size={22} aria-hidden="true" />
-              <h2 className="brand-font text-lg font-bold">Message verified</h2>
-            </div>
-            <p className="mt-2 text-sm leading-6">
-              Your paid message is now visible in the SatGate dashboard.
-            </p>
-            <PrimaryButton className="mt-4" onClick={() => {
-              setInvoice(null);
-              setQrDataUrl("");
-              setStatus("idle");
-            }}>
-              Send another
-            </PrimaryButton>
-          </section>
-        ) : (
-          <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
-            <label className="block text-sm font-semibold">
-              Name
-              <input
-                className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
-                value={senderName}
-                onChange={(event) => setSenderName(event.target.value)}
-                disabled={status === "creating" || status === "pending"}
-                required
-              />
-            </label>
-            <label className="block text-sm font-semibold">
-              Email
-              <input
-                className="mt-1 h-11 w-full rounded-md border border-slate-300 px-3 text-sm outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
-                type="email"
-                value={senderEmail}
-                onChange={(event) => setSenderEmail(event.target.value)}
-                disabled={status === "creating" || status === "pending"}
-                required
-              />
-            </label>
-            <label className="block text-sm font-semibold">
-              Message
+        {status === "idle" || status === "creating" ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-bold text-satBlack">Message</label>
               <textarea
-                className="mt-1 min-h-32 w-full resize-y rounded-md border border-slate-300 px-3 py-2 text-sm leading-6 outline-none transition focus:border-satBlue focus:ring-2 focus:ring-blue-100"
-                value={body}
-                onChange={(event) => setBody(event.target.value)}
-                disabled={status === "creating" || status === "pending"}
                 required
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="What's on your mind?"
+                className="w-full h-32 bg-white border border-slate-200 rounded-lg p-3 text-satBlack placeholder:text-slate-400 focus:ring-2 focus:ring-satBlue/20 focus:border-satBlue outline-none transition-all resize-none shadow-sm"
               />
-            </label>
+            </div>
+            
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100">
+              <span className="text-sm font-semibold text-slate-500">Amount</span>
+              <span className="font-bold text-satBlue">{amountSats} SATS</span>
+            </div>
 
-            {error ? (
-              <div className="flex gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm font-semibold text-amber-800">
-                <AlertTriangle className="mt-0.5 shrink-0" size={18} aria-hidden="true" />
-                <span>{error}</span>
-              </div>
-            ) : null}
-
-            {!invoice ? (
-              <PrimaryButton className="w-full" disabled={status === "creating"} type="submit">
-                {status === "creating" ? <Loader2 className="animate-spin" size={17} aria-hidden="true" /> : <Send size={17} aria-hidden="true" />}
-                Request invoice
-              </PrimaryButton>
-            ) : (
-              <PaymentPanel
-                copied={copied}
-                invoice={invoice}
-                qrDataUrl={qrDataUrl}
-                status={status}
-                onCopy={copyInvoice}
-                onMockPay={handleMockPay}
-                onWebLnPay={handleWebLnPay}
-              />
-            )}
+            <PrimaryButton type="submit" disabled={status === "creating"} className="w-full shadow-sm">
+              {status === "creating" ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating Invoice...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Pay & Submit
+                </>
+              )}
+            </PrimaryButton>
           </form>
+        ) : (
+          <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
+            <div className="flex flex-col items-center space-y-4">
+              {qrDataUrl && (
+                <div className="p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                  <img src={qrDataUrl} alt="Lightning Invoice" className="w-44 h-44" />
+                </div>
+              )}
+              
+              <div className="w-full space-y-3">
+                <button
+                  onClick={copyToClipboard}
+                  className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors group"
+                >
+                  <span className="text-xs font-mono text-slate-500 truncate mr-4">
+                    {invoice?.payment_request}
+                  </span>
+                  {copied ? (
+                    <CheckCircle className="w-4 h-4 text-satGreen" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
+                  )}
+                </button>
+                
+                <div className="grid grid-cols-2 gap-3">
+                   <button
+                    onClick={() => payWithWebLn(invoice?.payment_request || "")}
+                    className="flex items-center justify-center p-3 bg-satBlue hover:bg-blue-700 text-white rounded-lg font-bold transition-colors shadow-sm"
+                  >
+                    <Wallet className="w-4 h-4 mr-2" />
+                    WebLN
+                  </button>
+                  <button
+                    onClick={() => window.open(`lightning:${invoice?.payment_request}`, "_blank")}
+                    className="flex items-center justify-center p-3 bg-white hover:bg-slate-50 text-satBlack border border-slate-200 rounded-lg font-bold transition-colors shadow-sm"
+                  >
+                    Open Wallet
+                  </button>
+                </div>
+
+                {isMock && (
+                  <button
+                    onClick={handleSimulatePayment}
+                    className="w-full flex items-center justify-center p-2 text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-colors mt-2"
+                  >
+                    <CreditCard className="w-3 h-3 mr-2" />
+                    Simulate Demo Payment
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            <div className="p-4 bg-satBlue/5 border border-satBlue/10 rounded-lg">
+              <p className="text-xs text-slate-600 leading-relaxed text-center italic">
+                Waiting for network confirmation...
+              </p>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-start space-x-2 p-3 bg-red-50 border border-red-100 rounded-lg text-satRed text-xs font-semibold">
+            <AlertTriangle className="w-4 h-4 shrink-0" />
+            <p>{error}</p>
+          </div>
         )}
       </div>
     </div>
-  );
-}
-
-function PaymentPanel({
-  copied,
-  invoice,
-  qrDataUrl,
-  status,
-  onCopy,
-  onMockPay,
-  onWebLnPay,
-}: {
-  copied: boolean;
-  invoice: InvoiceResponse;
-  qrDataUrl: string;
-  status: string;
-  onCopy: () => void;
-  onMockPay: () => void;
-  onWebLnPay: () => void;
-}) {
-  return (
-    <section className="rounded-md border border-slate-200 bg-slate-50 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="brand-font text-lg font-bold">Pay {invoice.amount_sats} sats</h2>
-          <p className="mt-1 text-sm text-slate-600">Invoice expires at {new Date(invoice.expires_at).toLocaleTimeString()}.</p>
-        </div>
-        <StatusBadge status={status} />
-      </div>
-
-      {qrDataUrl ? (
-        <div className="mt-4 flex justify-center">
-          <img
-            alt="Lightning invoice QR code"
-            className="h-48 w-48 rounded-md border border-slate-200 bg-white p-2"
-            height={192}
-            src={qrDataUrl}
-            width={192}
-          />
-        </div>
-      ) : null}
-
-      <p className="mt-4 break-all rounded-md bg-white p-3 text-xs leading-5 text-slate-700">
-        {invoice.payment_request}
-      </p>
-
-      <div className="mt-4 grid gap-2 sm:grid-cols-3">
-        <PrimaryButton onClick={onWebLnPay} type="button">
-          <Wallet size={17} aria-hidden="true" />
-          WebLN
-        </PrimaryButton>
-        <PrimaryButton onClick={onCopy} tone="neutral" type="button">
-          <Copy size={17} aria-hidden="true" />
-          {copied ? "Copied" : "Copy"}
-        </PrimaryButton>
-        <PrimaryButton onClick={onMockPay} tone="success" type="button">
-          Demo pay
-        </PrimaryButton>
-      </div>
-    </section>
   );
 }

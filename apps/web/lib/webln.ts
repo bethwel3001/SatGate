@@ -9,9 +9,15 @@ declare global {
 
 export async function payWithWebLn(paymentRequest: string) {
   if (!window.webln) {
-    throw new Error("WebLN wallet not found");
+    return false;
   }
 
-  await window.webln.enable();
-  await window.webln.sendPayment(paymentRequest);
+  try {
+    await window.webln.enable();
+    await window.webln.sendPayment(paymentRequest);
+    return true;
+  } catch (e) {
+    console.error("WebLN payment failed", e);
+    return false;
+  }
 }

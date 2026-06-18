@@ -1,82 +1,119 @@
-import type { InvoiceResponse, InvoiceStatus, SatGateForm, SatGateMessage } from "./types";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+export const API_URL = API_BASE_URL;
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
+export async function createInvoice(site_id: string, message: string, amount_sats: number) {
+  const response = await fetch(`${API_BASE_URL}/invoices`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ site_id, message, amount_sats }),
   });
 
   if (!response.ok) {
-    const detail = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(detail.error ?? "SatGate request failed");
+    throw new Error("Failed to create invoice");
   }
 
-  return response.json() as Promise<T>;
+  return response.json();
 }
 
-export function getForms() {
-  return request<SatGateForm[]>("/api/forms", { cache: "no-store" });
+export async function checkInvoice(payment_hash: string) {
+  const response = await fetch(`${API_BASE_URL}/invoices/${payment_hash}`);
+  if (!response.ok) {
+    throw new Error("Failed to check invoice status");
+  }
+  return response.json();
 }
 
-export function createForm(payload: { name: string; domain: string; amount_sats: number }) {
-  return request<SatGateForm>("/api/forms", {
+export async function getSite(site_id: string) {
+  const response = await fetch(`${API_BASE_URL}/sites/${site_id}`);
+  if (!response.ok) {
+    throw new Error("Site not found");
+  }
+  return response.json();
+}
+
+export async function getSubmissions(site_id: string) {
+  const response = await fetch(`${API_BASE_URL}/sites/${site_id}/submissions`);
+  if (!response.ok) {
+    throw new Error("Failed to load submissions");
+  }
+  return response.json();
+}
+
+// Aliases for the Dashboard UI
+export async function getForms() {
+  const response = await fetch(`${API_BASE_URL}/sites`);
+  if (!response.ok) {
+    throw new Error("Failed to load forms");
+  }
+  return response.json();
+}
+
+export async function getMessages() {
+  const response = await fetch(`${API_BASE_URL}/submissions`);
+  if (!response.ok) {
+    throw new Error("Failed to load messages");
+  }
+  return response.json();
+}
+
+export async function createForm(data: { name: string; domain: string; amount_sats: number }) {
+  const response = await fetch(`${API_BASE_URL}/sites`, {
     method: "POST",
-    body: JSON.stringify(payload),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ 
+      owner_id: "demo-user", 
+      name: data.name,
+      domain: data.domain,
+      min_amount_sats: data.amount_sats
+    }),
   });
+
+  if (!response.ok) {
+    throw new Error("Failed to create form");
+  }
+
+  return response.json();
 }
 
-export async function deleteForm(id: string): Promise<void> {
-  const response = await fetch(`${API_URL}/api/forms/${id}`, {
+export async function updateForm(id: string, data: { name: string; domain: string; amount_sats: number }) {
+  const response = await fetch(`${API_BASE_URL}/sites/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ 
+      name: data.name,
+      domain: data.domain,
+      min_amount_sats: data.amount_sats
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update form");
+  }
+
+  return response.json();
+}
+
+export async function deleteForm(id: string) {
+  const response = await fetch(`${API_BASE_URL}/sites/${id}`, {
     method: "DELETE",
-    headers: { "Content-Type": "application/json" },
   });
+
   if (!response.ok) {
-    const detail = await response.json().catch(() => ({ error: response.statusText }));
-    throw new Error(detail.error ?? "SatGate request failed");
+    throw new Error("Failed to delete form");
   }
 }
 
-export function getMessages() {
-  return request<SatGateMessage[]>("/api/messages", { cache: "no-store" });
-}
-
-export function createInvoice(payload: {
-  form_id: string;
-  sender_name: string;
-  sender_email: string;
-  body: string;
-}) {
-  return request<InvoiceResponse>("/api/invoices", {
+export async function createSite(owner_id: string, name: string) {
+  const response = await fetch(`${API_BASE_URL}/sites`, {
     method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-export function getInvoice(invoiceId: string) {
-  return request<InvoiceStatus>(`/api/invoices/${invoiceId}`, { cache: "no-store" });
-}
-
-export function mockPayInvoice(invoiceId: string) {
-  return request<InvoiceStatus>(`/api/invoices/${invoiceId}/mock-pay`, {
-    method: "POST",
-  });
-}
-
-
-export async function updateForm(
-  id: string,
-  data: { name: string; domain: string; amount_sats: number }
-): Promise<SatGateForm> {
-  const res = await fetch(`${API_URL}/api/forms/${id}`, {
-    method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ owner_id, name }),
   });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+
+  if (!response.ok) {
+    throw new Error("Failed to create site");
+  }
+
+  return response.json();
 }
