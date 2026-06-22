@@ -9,7 +9,7 @@ const comfortaa = Comfortaa({
 });
 
 export const metadata: Metadata = {
-  title: "SatGate | Economic proof of intent for contact forms",
+  title: "SatGo | Economic proof of intent for contact forms",
   description: "Lightning-powered contact forms that make abuse costly and keep verified messages easy to read.",
 };
 

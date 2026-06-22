@@ -6,7 +6,7 @@
   const amount = currentScript.getAttribute('data-amount') || '5';
 
   if (!siteId) {
-    console.error('SatGate: Missing data-site-id attribute.');
+    console.error('SatGo: Missing data-site-id attribute.');
     return;
   }
 
@@ -16,7 +16,7 @@
   container.style.margin = '0 auto';
   
   const iframe = document.createElement('iframe');
-  const host = window.SatGateHost || 'http://localhost:3000';
+  const host = window.SatGoHost || 'http://localhost:3000';
   iframe.src = `${host}/embed/${siteId}?amount=${amount}`;
   iframe.style.width = '100%';
   iframe.style.height = '620px';

@@ -21,12 +21,12 @@ export type Submission = {
   form_id?: string;
 };
 
-export type SatGateForm = Site & {
+export type SatGoForm = Site & {
   domain: string;
   amount_sats: number;
 };
 
-export type SatGateMessage = Submission & {
+export type SatGoMessage = Submission & {
   sender_name: string;
   sender_email: string;
   body: string;

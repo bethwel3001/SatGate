@@ -144,7 +144,7 @@ export function WidgetForm({ formId }: WidgetFormProps) {
     <div className="max-w-md mx-auto bg-white border border-slate-200 rounded-xl overflow-hidden font-body">
       <div className="p-6 space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-lg font-bold text-satBlack brand-font">SatGate</h1>
+          <h1 className="text-lg font-bold text-satBlack brand-font">SatGo</h1>
           <StatusBadge status={status} />
         </div>
 

@@ -7,7 +7,7 @@ export default function LandingPage() {
     <div className="flex min-h-screen flex-col bg-white text-satBlack">
       <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2">
-          <span className="brand-font text-2xl font-bold tracking-tight">SatGate</span>
+          <span className="brand-font text-2xl font-bold tracking-tight">SatGo</span>
         </div>
         <nav className="hidden md:block">
           <ul className="flex gap-8 text-sm font-semibold">
@@ -34,7 +34,7 @@ export default function LandingPage() {
               Stop spam with <span className="text-satBlue">Sats</span>.
             </h1>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600">
-              SatGate adds a tiny cost to your contact form. Real leads won&apos;t mind paying 5 sats, but automated spammers will find it prohibitively expensive.
+              SatGo adds a tiny cost to your contact form. Real leads won&apos;t mind paying 5 sats, but automated spammers will find it prohibitively expensive.
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">
               <Link href="/dashboard">
@@ -99,7 +99,7 @@ export default function LandingPage() {
                   <Step 
                     number="3"
                     title="Receive verified messages"
-                    description="Paid messages appear instantly in your SatGate dashboard. No more spam."
+                    description="Paid messages appear instantly in your SatGo dashboard. No more spam."
                   />
                 </div>
               </div>
@@ -190,10 +190,10 @@ export default function LandingPage() {
       <footer className="border-t border-slate-200 bg-white px-4 py-12 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center gap-2">
-            <span className="brand-font text-xl font-bold">SatGate</span>
+            <span className="brand-font text-xl font-bold">SatGo</span>
           </div>
           <p className="text-sm text-slate-500">
-            © 2026 SatGate. Built for the future of the web.
+            © 2026 SatGo. Built for the future of the web.
           </p>
         </div>
       </footer>
