@@ -2,7 +2,7 @@
 
 ## Goal
 
-Build a working SatGate demo that proves invoice creation, payment, webhook verification, and dashboard delivery.
+Build a working SatGo demo that proves invoice creation, payment, webhook verification, and dashboard delivery.
 
 ## MVP Scope
 

@@ -1,10 +1,10 @@
-# SatGate
+# SatGo
 
-SatGate is an embeddable, Lightning-powered contact form that leverages micro-payments as economic proof of human intent.
+SatGo is an embeddable, Lightning-powered contact form that leverages micro-payments as economic proof of human intent.
 
 ## Core Value Proposition
 
-SatGate replaces friction-heavy, AI-vulnerable CAPTCHAs with a micro-tax on communication. By requiring a tiny Lightning payment (e.g., 1 to 10 satoshis), automated spam campaigns become cost-prohibitive, while legitimate human interactions remain unhindered. Website owners eliminate data clutter while capturing micro-revenue from high-intent messages.
+SatGo replaces friction-heavy, AI-vulnerable CAPTCHAs with a micro-tax on communication. By requiring a tiny Lightning payment (e.g., 1 to 10 satoshis), automated spam campaigns become cost-prohibitive, while legitimate human interactions remain unhindered. Website owners eliminate data clutter while capturing micro-revenue from high-intent messages.
 
 ## System Architecture
 

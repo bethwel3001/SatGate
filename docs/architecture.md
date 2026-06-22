@@ -2,7 +2,7 @@
 
 ## Overview
 
-SatGate has three main surfaces:
+SatGo has three main surfaces:
 
 1. Dashboard: a Next.js app where site owners configure forms and view verified messages.
 2. Widget: an embeddable iframe served by the frontend and backed by the Rust API.
@@ -10,7 +10,7 @@ SatGate has three main surfaces:
 
 ## Data Flow
 
-1. A visitor opens a page containing the SatGate iframe.
+1. A visitor opens a page containing the SatGo iframe.
 2. The visitor fills in the contact form and clicks send.
 3. The widget sends the message payload to `POST /api/invoices`.
 4. The Rust backend creates a pending message record and requests a Lightning invoice from Alby or LNBits.
