@@ -85,7 +85,7 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let db_url = env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://satgate.db".to_string());
+    let db_url = env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://satgo.db".to_string());
     
     let conn_options = SqliteConnectOptions::from_str(&db_url)?
         .create_if_missing(true);

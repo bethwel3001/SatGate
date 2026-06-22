@@ -1,5 +1,5 @@
 [package]
-name = "satgate-api"
+name = "satgo-api"
 version = "0.1.0"
 edition = "2021"
 

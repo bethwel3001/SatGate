@@ -299,6 +299,6 @@ mod tests {
     #[test]
     fn test_build_demo_invoice() {
         let result = build_demo_invoice("inv-123", 21);
-        assert_eq!(result, "satgate-demo-invoice:inv-123:21");
+        assert_eq!(result, "satgo-demo-invoice:inv-123:21");
     }
 }
