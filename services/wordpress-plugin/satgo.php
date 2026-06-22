@@ -1,26 +1,26 @@
 <?php
 /**
- * Plugin Name: SatGate - Lightning Pay-to-Submit
- * Description: Simple integration for SatGate Lightning-gated forms.
+ * Plugin Name: SatGo - Lightning Pay-to-Submit
+ * Description: Simple integration for SatGo Lightning-gated forms.
  * Version: 1.0.0
- * Author: SatGate
+ * Author: SatGo
  */
 
 if (!defined('ABSPATH')) exit;
 
-add_action('admin_menu', 'satgate_menu');
-function satgate_menu() {
-    add_options_page('SatGate Settings', 'SatGate', 'manage_options', 'satgate', 'satgate_settings_page');
+add_action('admin_menu', 'satgo_menu');
+function satgo_menu() {
+    add_options_page('SatGo Settings', 'SatGo', 'manage_options', 'satgo', 'satgo_settings_page');
 }
 
-function satgate_settings_page() {
+function satgo_settings_page() {
     ?>
     <div class="wrap">
-        <h1>SatGate Settings</h1>
+        <h1>SatGo Settings</h1>
         <form method="post" action="options.php">
             <?php
-            settings_fields('satgate_settings');
-            do_settings_sections('satgate');
+            settings_fields('satgo_settings');
+            do_settings_sections('satgo');
             submit_button();
             ?>
         </form>
@@ -28,28 +28,28 @@ function satgate_settings_page() {
     <?php
 }
 
-add_action('admin_init', 'satgate_settings_init');
-function satgate_settings_init() {
-    register_setting('satgate_settings', 'satgate_site_id');
-    register_setting('satgate_settings', 'satgate_amount');
+add_action('admin_init', 'satgo_settings_init');
+function satgo_settings_init() {
+    register_setting('satgo_settings', 'satgo_site_id');
+    register_setting('satgo_settings', 'satgo_amount');
 
-    add_settings_section('satgate_main', 'Main Settings', null, 'satgate');
+    add_settings_section('satgo_main', 'Main Settings', null, 'satgo');
 
-    add_settings_field('satgate_site_id', 'Site ID', function() {
-        $val = get_option('satgate_site_id');
-        echo '<input type="text" name="satgate_site_id" value="' . esc_attr($val) . '" class="regular-text">';
-    }, 'satgate', 'satgate_main');
+    add_settings_field('satgo_site_id', 'Site ID', function() {
+        $val = get_option('satgo_site_id');
+        echo '<input type="text" name="satgo_site_id" value="' . esc_attr($val) . '" class="regular-text">';
+    }, 'satgo', 'satgo_main');
 
-    add_settings_field('satgate_amount', 'Default Amount (SATS)', function() {
-        $val = get_option('satgate_amount', '100');
-        echo '<input type="number" name="satgate_amount" value="' . esc_attr($val) . '">';
-    }, 'satgate', 'satgate_main');
+    add_settings_field('satgo_amount', 'Default Amount (SATS)', function() {
+        $val = get_option('satgo_amount', '100');
+        echo '<input type="number" name="satgo_amount" value="' . esc_attr($val) . '">';
+    }, 'satgo', 'satgo_main');
 }
 
-add_action('wp_footer', 'satgate_inject_script');
-function satgate_inject_script() {
-    $site_id = get_option('satgate_site_id');
-    $amount = get_option('satgate_amount', '100');
+add_action('wp_footer', 'satgo_inject_script');
+function satgo_inject_script() {
+    $site_id = get_option('satgo_site_id');
+    $amount = get_option('satgo_amount', '100');
     if (!$site_id) return;
     
     // Replace with your production URL
