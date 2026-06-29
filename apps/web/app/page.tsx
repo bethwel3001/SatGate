@@ -7,10 +7,13 @@ export default function LandingPage() {
     <div className="flex min-h-screen flex-col bg-white text-satBlack">
       <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-6 sm:px-6 lg:px-8">
         <div className="flex items-center gap-2">
-          <span className="brand-font text-2xl font-bold tracking-tight">SatGo</span>
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/" className="brand-font text-3xl font-extrabold tracking-tight text-satBlack hover:text-satBlue transition">
+            SatGo
+          </a>
         </div>
         <nav className="hidden md:block">
-          <ul className="flex gap-8 text-sm font-semibold">
+          <ul className="brand-font flex gap-8 text-lg font-bold">
             <li><a href="#features" className="hover:text-satBlue transition">Features</a></li>
             <li><a href="#how-it-works" className="hover:text-satBlue transition">How it works</a></li>
             <li><Link href="/demo" className="hover:text-satBlue transition">Demo</Link></li>
@@ -18,7 +21,7 @@ export default function LandingPage() {
         </nav>
         <div className="flex items-center gap-4">
           <Link href="/dashboard">
-            <PrimaryButton>
+            <PrimaryButton className="brand-font">
               Get Started
               <ArrowRight size={16} />
             </PrimaryButton>
@@ -28,22 +31,29 @@ export default function LandingPage() {
 
       <main className="flex-grow">
         {/* Hero Section */}
-        <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-32">
-          <div className="text-center">
-            <h1 className="brand-font text-5xl font-extrabold tracking-tight sm:text-7xl">
-              Stop spam with <span className="text-satBlue">Sats</span>.
+        <section className="relative overflow-hidden py-24 sm:py-32 lg:py-40">
+          {/* Antigravity-inspired background */}
+          <div className="absolute inset-0 -z-10 h-full w-full bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-70">
+            {/* Floating gradient blobs */}
+            <div className="absolute -top-40 -right-40 h-[600px] w-[600px] rounded-full bg-blue-500/10 blur-[130px] md:animate-pulse duration-5000" />
+            <div className="absolute top-1/4 left-1/4 h-[400px] w-[400px] rounded-full bg-indigo-500/10 blur-[110px] md:animate-pulse duration-7000" />
+          </div>
+          
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+            <h1 className="brand-font text-5xl font-extrabold tracking-tight sm:text-7xl leading-[1.2] sm:leading-[1.1]">
+              Stop <span className="inline-block md:animate-bounce-custom underline decoration-[8px] decoration-satRed/80 underline-offset-[10px]">spam</span> with <span className="inline-block md:animate-bounce-custom delay-200 text-satBlue underline decoration-[8px] decoration-satBlue/80 underline-offset-[10px]">Sats</span>.
             </h1>
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-600">
+            <p className="mx-auto mt-8 max-w-2xl text-lg sm:text-xl leading-8 text-slate-600">
               SatGo adds a tiny cost to your contact form. Real leads won&apos;t mind paying 5 sats, but automated spammers will find it prohibitively expensive.
             </p>
-            <div className="mt-10 flex items-center justify-center gap-x-6">
+            <div className="mt-12 flex items-center justify-center gap-x-6">
               <Link href="/dashboard">
-                <PrimaryButton className="h-14 px-8 text-lg">
+                <PrimaryButton className="h-14 px-8 text-lg rounded-xl shadow-lg shadow-satBlue/15 hover:shadow-satBlue/25 transition">
                   Protect your inbox
                   <ArrowRight size={20} />
                 </PrimaryButton>
               </Link>
-              <Link href="/demo" className="text-sm font-bold leading-6 text-satBlack hover:text-satBlue transition">
+              <Link href="/demo" className="text-sm font-bold leading-6 text-satBlack hover:text-satBlue transition flex items-center gap-1.5">
                 Live demo <span aria-hidden="true">→</span>
               </Link>
             </div>

@@ -20,7 +20,7 @@ import {
   LayoutGrid,
   Zap,
 } from "lucide-react";
-import { API_URL, createForm, deleteForm, getForms, getMessages, updateForm } from "@/lib/api";
+import { API_URL, createForm, deleteForm, getForms, getMessages, updateForm, withdrawSats } from "@/lib/api";
 import type { SatGoForm, SatGoMessage } from "@/lib/types";
 import { PrimaryButton } from "./PrimaryButton";
 import { StatusBadge } from "./StatusBadge";
@@ -190,6 +190,32 @@ export function DashboardClient() {
   const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
   const [editState, setEditState] = useState<EditState | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const [withdrawInvoice, setWithdrawInvoice] = useState("");
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawStatus, setWithdrawStatus] = useState<{ success: boolean; message: string } | null>(null);
+
+  const handleWithdraw = async () => {
+    if (!selectedForm || !withdrawInvoice) return;
+    setWithdrawing(true);
+    setWithdrawStatus(null);
+    try {
+      const res = await withdrawSats(selectedForm.id, withdrawInvoice);
+      setWithdrawStatus({
+        success: true,
+        message: `Successfully withdrew ${res.amount_paid_sats} sats! Preimage: ${res.payment_preimage.slice(0, 16)}...`,
+      });
+      setWithdrawInvoice("");
+      await loadData();
+    } catch (e) {
+      setWithdrawStatus({
+        success: false,
+        message: e instanceof Error ? e.message : "Withdrawal failed.",
+      });
+    } finally {
+      setWithdrawing(false);
+    }
+  };
 
   useEffect(() => {
     async function init() {
@@ -574,6 +600,39 @@ export function DashboardClient() {
                   </PrimaryButton>
                 </div>
               </div>
+
+      {/* Withdraw Collected Sats Card */}
+      <div className="rounded-2xl border border-slate-200/60 bg-white p-6 md:p-8 shadow-panel flex flex-col gap-4">
+        <div>
+          <h3 className="brand-font text-xl font-bold text-satBlack tracking-tight flex items-center gap-2">
+            <Coins size={20} className="text-satBlue" />
+            Withdraw Collected Sats
+          </h3>
+          <p className="mt-1 text-xs text-slate-500 leading-normal">
+            Enter a Lightning Invoice (BOLT11) to withdraw funds from this form&apos;s balance.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input
+            className="flex-1 h-11 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-satBlack placeholder-slate-400 outline-none focus:border-satBlue focus:ring-4 focus:ring-blue-50 transition"
+            placeholder="lnbc..."
+            value={withdrawInvoice}
+            onChange={(e) => setWithdrawInvoice(e.target.value)}
+          />
+          <PrimaryButton
+            onClick={handleWithdraw}
+            disabled={withdrawing || !withdrawInvoice}
+            className="h-11 px-6 rounded-xl font-bold brand-font text-sm shrink-0 shadow-md shadow-satBlue/10 hover:shadow-satBlue/20"
+          >
+            {withdrawing ? "Processing..." : "Withdraw"}
+          </PrimaryButton>
+        </div>
+        {withdrawStatus && (
+          <p className={`text-xs font-bold ${withdrawStatus.success ? "text-satGreen" : "text-satRed"}`}>
+            {withdrawStatus.message}
+          </p>
+        )}
+      </div>
 
               {/* Verified Inbox */}
               <div>
